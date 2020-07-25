@@ -1,10 +1,12 @@
 import os
+import sys
 import cv2
 import subprocess
+sys.path.append(".")
 
 #change the filename determining the location
 #later chenge to take in from url
-filename = 'src\Video_Tests\A_Tilt_Side_to_Side.mp4' 
+filename = 'src\Video_Tests\A_Tilt_Side_to_Side.mp4'
 
 def get_frame_types(video_fn):
     command = 'ffprobe -v error -show_entries frame=pict_type -of default=noprint_wrappers=1'.split()
