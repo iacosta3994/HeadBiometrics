@@ -16,7 +16,8 @@ currentFrame = 0
 while(True):
     # Capture frame-by-frame
     ret, frame = cap.read()
-
+    if not ret:
+        break
     # Saves image of the current frame in jpg file
     name = './data/frame' + str(currentFrame) + '.jpg'
     print ('Creating...' + name)
