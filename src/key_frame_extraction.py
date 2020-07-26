@@ -17,7 +17,7 @@ while(True):
     # Capture frame-by-frame
     ret, frame = cap.read()
     if not ret:
-        break
+        break #stops loop when video finishes
     # Saves image of the current frame in jpg file
     name = './data/frame' + str(currentFrame) + '.jpg'
     print ('Creating...' + name)
