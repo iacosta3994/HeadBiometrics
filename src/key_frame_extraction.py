@@ -5,7 +5,7 @@ import os
 
 
 #Change in future to allow manipulation from __main__
-cap_origin_video, saved_frames_location,  frames_to_skip  = ('Video_Tests\A_Tilt_Side_to_Side.mp4'), ('./data/frame') , 10
+#cap_origin_video, saved_frames_location,  frames_to_skip  = ('Video_Tests\A_Tilt_Side_to_Side.mp4'), ('./data/frame') , 10
 
 #function splits incoming mp4 and sends frames to saved_frames_locations
 def split_frames(cap_origin_video, saved_frames_location, frames_to_skip):
@@ -36,5 +36,3 @@ def split_frames(cap_origin_video, saved_frames_location, frames_to_skip):
         else: #No image input
             cap.release() #deallocates memory and clears capture pointer
             break
-
-split_frames(cap_origin_video, saved_frames_location, frames_to_skip)
