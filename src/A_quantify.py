@@ -8,18 +8,28 @@ import sys
 import numpy as np
 import matplotlib
 import cv2
+
+import ast
+import inspect
+def contains_explicit_return(f):
+    return any(isinstance(node, ast.Return) for node in ast.walk(ast.parse(inspect.getsource(f))))
+
 from src.key_frame_extraction import *
 from src.canny_edge_detection_cv2 import *
 
-cap_origin_video, saved_frames_location,  frames_to_skip  = ('Video_Tests\A_Tilt_Side_to_Side.mp4'), ('./data/frame') , 10
+cap_origin_video, saved_frames_location,  frames_to_skip  = ('Video_Tests\A_Tilt_Side_to_Side.mp4'), ('./data/frame') , 30
 
-split_frames(cap_origin_video, saved_frames_location, frames_to_skip)
-
+final_frame_idx = split_frames(cap_origin_video, saved_frames_location, frames_to_skip)
 
 current_frame_idx = 0
-filename = saved_frames_location + str(current_frame_idx) + '.jpeg'
 
-with open('filename', 'w') as f:
-    
-    make_canny(filename)
-    current_frame_idx += frames_to_skip
+while os.path:
+    filename = saved_frames_location + str(current_frame_idx) + '.jpeg'
+    with open('filename', 'w') as f:
+        if current_frame_idx <= final_frame_idx:
+            make_canny(filename)
+            current_frame_idx += frames_to_skip
+            print(current_frame_idx, final_frame_idx)
+
+        else:
+            break
