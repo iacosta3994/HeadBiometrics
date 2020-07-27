@@ -21,11 +21,11 @@ while cap.isOpened():
     filename = ('./data/frame') + str(currentFrame) + '.jpeg'
     #retval, image |grabs, decodes, and returns for next frame
     retrieved, frame = cap.read()
-    #if next image was retrieved 
+    #if an image was retrieved
     if retrieved:
         cv2.imwrite(filename, frame)
-        currentFrame += 3 #int determines how many frames to skip by
-        cap.set(1, currentFrame)
-    else:
-        cap.release()
+        currentFrame += 10 #int determines how many frames to skip by
+        cap.set(1, currentFrame) #sets propId, value allows to skip to later frame
+    else: #Image input None:
+        cap.release() #deallocates memory and clears capture pointer
         break
