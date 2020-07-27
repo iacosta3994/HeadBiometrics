@@ -2,7 +2,8 @@ import numpy as np
 import cv2 as cv
 from matplotlib import pyplot as plt
 
-img = cv.imread('img.jpg',0)
+#starting off with the first fram in the database [frame0]
+img = cv.imread('./data/frame/frame0.jpg',0)
 edges = cv.Canny(img,100,200)
 
 plt.subplot(121),plt.imshow(img,cmap = 'gray')
