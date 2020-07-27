@@ -17,7 +17,7 @@ def contains_explicit_return(f):
 from src.key_frame_extraction import *
 from src.canny_edge_detection_cv2 import *
 
-cap_origin_video, saved_frames_location,  frames_to_skip  = ('Video_Tests\A_Tilt_Side_to_Side.mp4'), ('./data/frame') , 30
+cap_origin_video, saved_frames_location,  frames_to_skip  = ('Video_Tests\A_Tilt_Side_to_Side.mp4'), ('./data/A_frame') , 10
 
 final_frame_idx = split_frames(cap_origin_video, saved_frames_location, frames_to_skip)
 
@@ -28,8 +28,7 @@ while os.path:
     with open('filename', 'w') as f:
         if current_frame_idx <= final_frame_idx:
             make_canny(filename)
+            print("Current frame: {} Final frame : {}".format(current_frame_idx, final_frame_idx))
             current_frame_idx += frames_to_skip
-            print(current_frame_idx, final_frame_idx)
-
         else:
             break
