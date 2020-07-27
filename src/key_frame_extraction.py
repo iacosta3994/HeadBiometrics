@@ -5,9 +5,11 @@ import os
 
 #Change in future to allow manipulation from __main__
 #cap_origin_video, saved_frames_location,  frames_to_skip  = ('Video_Tests\A_Tilt_Side_to_Side.mp4'), ('./data/frame') , 10
-
+ #setting int to be used in AB quantify
+max_frame_idx = 'None!'
 #function splits incoming mp4 and sends frames to saved_frames_locations
 def split_frames(cap_origin_video, saved_frames_location, frames_to_skip):
+
     try:
         if not os.path.exists('data'):
             os.makedirs('data') #hosts images made in process
@@ -20,6 +22,7 @@ def split_frames(cap_origin_video, saved_frames_location, frames_to_skip):
 
     current_frame_idx = 0 #starting with the first scene
 
+
     while cap.isOpened():
         #Establishing filename with the sequential number of frame
         filename = saved_frames_location + str(current_frame_idx) + '.jpeg'
@@ -31,7 +34,10 @@ def split_frames(cap_origin_video, saved_frames_location, frames_to_skip):
         if retrieved:
             cv2.imwrite(filename, frame)
             current_frame_idx += frames_to_skip # determines how many frames to skip by
+
             cap.set(1, current_frame_idx) #sets (propId, value) allows to skip to later frame in cap
         else: #No image input
+            global max_frame_idx
+            max_frame_idx = current_frame_idx
             cap.release() #deallocates memory and clears capture pointer
             break
