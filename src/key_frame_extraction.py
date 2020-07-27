@@ -3,8 +3,6 @@ import cv2
 import numpy as np
 import os
 
-# Playing video from file:
-cap = cv2.VideoCapture('Video_Tests\A_Tilt_Side_to_Side.mp4')
 
 try:
     if not os.path.exists('data'):
@@ -12,20 +10,22 @@ try:
 except OSError:
     print ('Error: Creating directory of data')
 
+
+# Playing video from file:
+cap = cv2.VideoCapture('Video_Tests\A_Tilt_Side_to_Side.mp4')
+
 currentFrame = 0
-while(True):
-    # Capture frame-by-frame
-    ret, frame = cap.read()
-    if not ret:
-        break #stops loop when video finishes
-    # Saves image of the current frame in jpg file
-    name = './data/frame' + str(currentFrame) + '.jpg'
-    print ('Creating...' + name)
-    cv2.imwrite(name, frame)
 
-    # To stop duplicate images
-    currentFrame += 1
-
-# When everything done, release the capture
-cap.release()
-cv2.destroyAllWindows()
+while cap.isOpened():
+    #Establishing filename with the sequential number of frame
+    filename = ('./data/frame') + str(currentFrame) + '.jpeg'
+    #retval, image |grabs, decodes, and returns for next frame
+    retrieved, frame = cap.read()
+    #if next image was retrieved 
+    if retrieved:
+        cv2.imwrite(filename, frame)
+        currentFrame += 3 #int determines how many frames to skip by
+        cap.set(1, currentFrame)
+    else:
+        cap.release()
+        break
