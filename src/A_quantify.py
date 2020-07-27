@@ -5,6 +5,7 @@ and then use info from mag_stripe_search to get the conversion from pixel to mm^
 '''
 import os
 import sys
+import numpy as np
 from key_frame_extraction import split_frames
 from canny_edge_detection_cv2 import make_canny
 
