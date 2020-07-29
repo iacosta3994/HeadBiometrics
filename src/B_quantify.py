@@ -18,7 +18,7 @@ final_frame_idx = split_frames(cap_origin_video, saved_frames_location, frames_t
 current_frame_idx = 0
 
 while os.path:
-    filename, filename_canny = (saved_frames_location + str(current_frame_idx) + '.jpeg') , (saved_frames_location + '_canny'+ str(current_frame_idx) +  '.jpeg')
+    filename, filename_canny = saved_frames_location + str(current_frame_idx) + '.jpeg' , saved_frames_location + '_canny'+ str(current_frame_idx) +  '.jpeg'
     with open('filename', 'w') as f:
         if current_frame_idx <= final_frame_idx:
             make_canny(filename, filename_canny)
