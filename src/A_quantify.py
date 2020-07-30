@@ -10,6 +10,7 @@ import matplotlib
 import cv2
 from src.key_frame_extraction import *
 from src.canny_edge_detection_cv2 import *
+from src.mag_stripe_search import *
 
 cap_origin_video, saved_frames_location,  frames_to_skip  = ('Video_Tests\A_Tilt_Side_to_Side.mp4'), ('./data/A_frame') , 30
 
@@ -22,7 +23,8 @@ while os.path:
 
     with open('filename', 'w') as f:
         if current_frame_idx <= final_frame_idx:
-            make_canny(filename, filename_canny)
+            canny_image = make_canny(filename, filename_canny)
+            get_magstripe_demensions(canny_image)
             print("Current frame: {} Final frame : {}".format(current_frame_idx, final_frame_idx))
             current_frame_idx += frames_to_skip
         else:
