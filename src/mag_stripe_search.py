@@ -5,24 +5,34 @@ Function will look for a set of pixels with same ratio demensions as mag_stripe.
 With the image, Height and Width (pixel_H, pixel_W : 0 , 0)will be saved along with specific frameIdx it belongs to
 This will help determine wich frame has the Highest Height & Width, new py that esablishes collection of values to find Highest values will be output
 '''
-
-'''
-Parameters:	preCornerDetect
-src – Source single-channel 8-bit of floating-point image.
-dst – Output image that has the type CV_32F and the same size as src .
-ksize – Aperture size of the Sobel() .
-borderType – Pixel extrapolation method. See borderInterpolate() .
-'''
-
-cv2.preCornerDetect(src, ksize[, dst[, borderType]])
+import os
+import sys
+import numpy as np
+import matplotlib
+import cv2
 
 
-'''
-Parameters:	cornerEigenValsAndVecs
-src – Input single-channel 8-bit or floating-point image.
-dst – Image to store the results. It has the same size as src and the type CV_32FC(6) .
-blockSize – Neighborhood size (see details below).
-ksize – Aperture parameter for the Sobel() operator.
-borderType – Pixel extrapolation method. See borderInterpolate() .
-'''
-cv2.cornerEigenValsAndVecs(src, blockSize, ksize[, dst[, borderType]])
+
+def get_magstripe_demensions (canny_image, filename_canny):
+
+    contours, hierarchy = cv2.findContours(canny_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    detect_mag_stripe(contours, filename_canny)
+
+
+def detect_mag_stripe(contours, filename_canny):
+    for contour in contours:
+        # calculate perimeter using
+        perimeter = cv2.arcLength(contour, True)
+        # apply contour approximation and store the result in vertices
+        vertices = cv2.approxPolyDP(contour, 0.05 * perimeter, True)
+
+        if len(vertices) == 3:
+            x, y, width, height = cv2.boundingRect(vertices)
+            aspectRatio = float(width) / height
+            print(aspectRatio)
+            if aspectRatio >= .5 and aspectRatio <= 10.5:
+                rect = cv2.minAreaRect(contour)
+                box = cv2.boxPoints(rect)
+                box = np.int0(box)
+                canny_image_write = cv2.imread(filename_canny)
+                cv2.imwrite(filename_canny, cv2.drawContours(canny_image_write,[box],0,(0,0,255),2))
