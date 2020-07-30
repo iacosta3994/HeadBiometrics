@@ -24,8 +24,8 @@ while os.path:
     with open('filename', 'w') as f:
         if current_frame_idx <= final_frame_idx:
             canny_image = make_canny(filename, filename_canny)
-            get_magstripe_demensions(canny_image)
-            print("Current frame: {} Final frame : {}".format(current_frame_idx, final_frame_idx))
+            get_magstripe_demensions(canny_image, filename_canny)
+            #print("Current frame: {} Final frame : {}".format(current_frame_idx, final_frame_idx))
             current_frame_idx += frames_to_skip
         else:
             break
