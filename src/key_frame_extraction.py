@@ -6,7 +6,6 @@ global final_frame_idx                                                          
 def split_frames(cap_origin_path, saved_frames_location, frames_to_skip):       # Function splits incoming mp4 and sends finished frames to saved_frames_locations
     if not os.path.exists('data'):                                          # This checks if directory is made
             os.makedirs('data')                                                 # This makes the directory to store the images if no file was found
-    print ('Error: Creating directory of data')                             # Notify if OS Error occurs
     cap = cv2.VideoCapture(cap_origin_path)                                     # Assigning video from file to variable cap
     current_frame_idx = 0                                                       # Starting with the first{0} frame
     while cap.isOpened():                                                       # While there are still images in cap: do the following
