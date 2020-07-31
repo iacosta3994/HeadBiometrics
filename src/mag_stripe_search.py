@@ -16,8 +16,15 @@ mag_stripe_constant_w_h = [85.60, 8.37]
 def get_magstripe_demensions (canny_image, filename_canny):
 
     contours, hierarchy = cv2.findContours(canny_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    detect_mag_stripe(contours, filename_canny)
+    mag_stripe_w_h = detect_mag_stripe(contours, filename_canny)
+    return mag_stripe_w_h
 
+def test_draw_magstripe_contour(contour, filename_canny):
+    rect = cv2.minAreaRect(contour)
+    box = cv2.boxPoints(rect)
+    box = np.int0(box)
+    canny_image_write = cv2.imread(filename_canny)
+    cv2.imwrite(filename_canny, cv2.drawContours(canny_image_write,[box],0,(0,0,255),2))
 
 def detect_mag_stripe(contours, filename_canny):
     for contour in contours:
@@ -29,13 +36,8 @@ def detect_mag_stripe(contours, filename_canny):
         if len(approx ) == 4:
             x, y, width, height = cv2.boundingRect(approx )
             aspectRatio = float(width) / height
-            print(aspectRatio)
             if aspectRatio >= 9.5 and aspectRatio <= 12.5:
-                rect = cv2.minAreaRect(contour)
-                box = cv2.boxPoints(rect)
-                box = np.int0(box)
-                canny_image_write = cv2.imread(filename_canny)
-                cv2.imwrite(filename_canny, cv2.drawContours(canny_image_write,[box],0,(0,0,255),2))
-
+                test_draw_magstripe_contour(contour, filename_canny)
+                return width, height
 
 #next step will be to get the largest boxpoints L35 to return the most accurate pixel to mm measurement.
