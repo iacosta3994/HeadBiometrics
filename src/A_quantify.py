@@ -17,6 +17,7 @@ cap_origin_video, saved_frames_location,  frames_to_skip  = ('Video_Tests\A_Tilt
 final_frame_idx = split_frames(cap_origin_video, saved_frames_location, frames_to_skip)
 current_frame_idx = 0
 
+mag_stripe_constant_w_h =[]
 while os.path:
 
     filename, filename_canny = saved_frames_location + str(current_frame_idx) + '.jpeg' , saved_frames_location + '_canny'+ str(current_frame_idx) +  '.jpeg'
@@ -24,8 +25,11 @@ while os.path:
     with open('filename', 'w') as f:
         if current_frame_idx <= final_frame_idx:
             canny_image = make_canny(filename, filename_canny)
-            get_magstripe_demensions(canny_image, filename_canny)
+            mag_stripe_w_h = get_magstripe_demensions(canny_image, filename_canny)
+            if mag_stripe_w_h:
+                print(mag_stripe_w_h)
             #print("Current frame: {} Final frame : {}".format(current_frame_idx, final_frame_idx))
             current_frame_idx += frames_to_skip
         else:
+
             break
