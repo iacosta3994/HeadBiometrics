@@ -21,16 +21,16 @@ def get_magstripe_demensions (canny_image, filename_canny):
 
 def detect_mag_stripe(contours, filename_canny):
     for contour in contours:
-        # calculate perimeter using
-        perimeter = cv2.arcLength(contour, True)
-        # apply contour approximation and store the result in vertices
-        vertices = cv2.approxPolyDP(contour, 0.05 * perimeter, True)
+        # calculate epsilon  using
+        epsilon  = (0.05 * cv2.arcLength(contour, True))
+        # apply contour approximation and store the result in approx
+        approx  = cv2.approxPolyDP(contour, 0.05 * epsilon , True)
 
-        if len(vertices) == 3:
-            x, y, width, height = cv2.boundingRect(vertices)
+        if len(approx ) == 4:
+            x, y, width, height = cv2.boundingRect(approx )
             aspectRatio = float(width) / height
             print(aspectRatio)
-            if aspectRatio >= .5 and aspectRatio <= 10.5:
+            if aspectRatio >= 9.5 and aspectRatio <= 12.5:
                 rect = cv2.minAreaRect(contour)
                 box = cv2.boxPoints(rect)
                 box = np.int0(box)
