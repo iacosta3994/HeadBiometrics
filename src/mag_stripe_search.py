@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib
 import cv2
 
-
+mag_stripe_constant_w_h = [85.60, 8.37]
 
 def get_magstripe_demensions (canny_image, filename_canny):
 
@@ -36,3 +36,6 @@ def detect_mag_stripe(contours, filename_canny):
                 box = np.int0(box)
                 canny_image_write = cv2.imread(filename_canny)
                 cv2.imwrite(filename_canny, cv2.drawContours(canny_image_write,[box],0,(0,0,255),2))
+
+
+#next step will be to get the largest boxpoints L35 to return the most accurate pixel to mm measurement.
