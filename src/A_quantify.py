@@ -12,7 +12,7 @@ from src.key_frame_extraction import *
 from src.canny_edge_detection_cv2 import *
 from src.mag_stripe_search import *
 
-cap_origin_video, saved_frames_location,  frames_to_skip  = ('Video_Tests\A_Tilt_Side_to_Side.mp4'), ('./data/A_frame') , 30
+cap_origin_video, saved_frames_location,  frames_to_skip  = ('Video_Tests\A_Tilt_Side_to_Side.mp4'), ('./data/A_frame') , 10
 
 final_frame_idx = split_frames(cap_origin_video, saved_frames_location, frames_to_skip)
 current_frame_idx = 0
