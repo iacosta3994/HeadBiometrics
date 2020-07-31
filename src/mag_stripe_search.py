@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib
 import cv2
 
-mag_stripe_constant_w_h = [85.60, 8.37]
+
 
 def get_magstripe_demensions (canny_image, filename_canny):
 
@@ -38,6 +38,6 @@ def detect_mag_stripe(contours, filename_canny):
             aspectRatio = float(width) / height
             if aspectRatio >= 9.5 and aspectRatio <= 12.5:
                 test_draw_magstripe_contour(contour, filename_canny)
-                return width, height
+                return ([width, height])
 
 #next step will be to get the largest boxpoints L35 to return the most accurate pixel to mm measurement.
