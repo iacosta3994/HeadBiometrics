@@ -37,7 +37,7 @@ def detect_mag_stripe(contours, filename_canny):
             x, y, width, height = cv2.boundingRect(approx )
             aspectRatio = float(width) / height
             if aspectRatio >= 9.227 and aspectRatio <= 11.227:
-                test_draw_magstripe_contour(contour, filename_canny)
+                #test_draw_magstripe_contour(contour, filename_canny)
                 return ([width, height])
 
 #next step will be to get the largest boxpoints L35 to return the most accurate pixel to mm measurement.
