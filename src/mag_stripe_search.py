@@ -13,7 +13,7 @@ def get_magstripe_demensions(canny_image, filename_canny):
     mag_stripe_h_w = detect_mag_stripe(contours, filename_canny)
     return mag_stripe_h_w
 
-def test_draw_magstripe_contour(contour, filename_canny, color = (0,0,255)):
+def test_draw_magstripe_contour(contour, filename_canny, color = (0,255,0)):
     rect = cv2.minAreaRect(contour)
     box = cv2.boxPoints(rect)
     box = np.int0(box)
@@ -23,18 +23,15 @@ def test_draw_magstripe_contour(contour, filename_canny, color = (0,0,255)):
 def detect_mag_stripe(contours, filename_canny):
     for contour in contours:
         # calculate epsilon  using
-        epsilon  = (0.05 * cv2.arcLength(contour, True))
+        epsilon = (0.04 * cv2.arcLength(contour, True))
         # apply contour approximation and store the result in approx
-        approx  = cv2.approxPolyDP(contour, 0.1 * epsilon , True)
+        approx = cv2.approxPolyDP(contour, epsilon , True)
 
         if len(approx ) == 4:
-            x, y, width, height = cv2.boundingRect(approx )
-            aspectRatio = float(width) / height
-            if aspectRatio >= .09 and aspectRatio <= .11:
-                if width > 20:
-                    if height > 200:
-                        return ([width, height])
-            if aspectRatio >= 0.14 and aspectRatio <= 0.155:
-                if width > 20:
-                    if height > 200:
-                        print(filename_canny)
+            rect = cv2.minAreaRect(contour)
+            (x, y), (width, height), angle = rect
+            aspectRatio = min(width, height) / max(width, height)
+            if aspectRatio >= .075 and aspectRatio <= .16:
+                if height > 10 and width > 10:
+                    test_draw_magstripe_contour(contour,filename_canny)
+                    return (width, height)
