@@ -18,8 +18,8 @@ cap_origin_video, saved_frames_location,  frames_to_skip  = ('Video_Tests\B_test
 final_frame_idx = split_frames(cap_origin_video, saved_frames_location, frames_to_skip)
 current_frame_idx = 0
 
-list_mag_stripe_h_w =[]
-mag_stripe_constant_h_w = [8.37, 85.60]
+list_mag_stripe_w_h =[]
+mag_stripe_constant_w_h = [85.60, 8.37]
 
 
 while os.path:
@@ -29,15 +29,16 @@ while os.path:
     with open('filename', 'w') as f:
         if current_frame_idx <= final_frame_idx:
             canny_image = make_canny(filename, filename_canny)
-            mag_stripe_h_w = get_magstripe_demensions(canny_image, filename_canny)
-            if mag_stripe_h_w:
-                list_mag_stripe_h_w.append(mag_stripe_h_w)
+            mag_stripe_w_h = get_magstripe_demensions(canny_image, filename_canny)
+            if mag_stripe_w_h:
+                list_mag_stripe_w_h.append(mag_stripe_w_h)
             #print("Current frame: {} Final frame : {}".format(current_frame_idx, final_frame_idx))
             current_frame_idx += frames_to_skip
         else:
-            if len(list_mag_stripe_h_w) == 0:
+            if len(list_mag_stripe_w_h) == 0:
                 print("found no magstripe")
                 break
-            mean_mag_stripe_h_w = (np.mean(list_mag_stripe_h_w, axis=0))
-            print(np.divide(mag_stripe_constant_h_w, mean_mag_stripe_h_w))
-            break
+            mean_mag_stripe_w_h = (np.mean(list_mag_stripe_w_h, axis=0))
+            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h, mean_mag_stripe_w_h))
+            pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
+            print(pixel_mm_mean)
