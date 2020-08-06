@@ -29,7 +29,7 @@ def video_to_pixel_mm (origin_video, saved_frame_name, use_every_x_frame):
 
         with open('filename', 'w') as f:
             if current_frame_idx <= final_frame_idx:
-                canny_image = make_canny(filename, filename_canny)
+                canny_image = make_canny_magstripe(filename, filename_canny)
                 mag_stripe_w_h = get_magstripe_demensions(canny_image, filename_canny)
                 if mag_stripe_w_h:
                     list_mag_stripe_w_h.append(mag_stripe_w_h)
