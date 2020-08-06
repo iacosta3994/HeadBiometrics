@@ -47,7 +47,7 @@ head_15 = (measured_circumference_percent_of_generated_circumfrence(*person15))
 #Removed outlier results to improve accuracy |head_3,
 list_of_heads = [head_1 , head_2 ,  head_4 , head_5 , head_6 , head_7 , head_8 , head_9 , head_10 , head_11 , head_12 , head_13 , head_14 , head_15]
 mean_head_percentage = statistics.mean(list_of_heads)
-
+print(mean_head_percentage)
 #This transcendental constant is used to express the gamma function and can be used to find arc length of elipse gausss_constant = 0.834626841674
 #print("this is the head avg percentage {}".format(mean_head_percentage))
 #Using the mean difference percentage stored in mean_head_percentage it then corrects the boxed circumference returns generated_circumference.
