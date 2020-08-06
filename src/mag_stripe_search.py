@@ -33,5 +33,4 @@ def detect_mag_stripe(contours, filename_canny):
             aspectRatio = min(width, height) / max(width, height)
             if aspectRatio >= .075 and aspectRatio <= .16:
                 if height > 10 and width > 10:
-                    test_draw_magstripe_contour(contour,filename_canny)
                     return (width, height)
