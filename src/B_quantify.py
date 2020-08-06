@@ -9,4 +9,5 @@ from src.canny_edge_detection_cv2 import *
 from src.mag_stripe_search import *
 from src.video_to_mm import *
 
-pixel_mm = video_to_pixel_mm(('Video_Tests\B_test_alex.mp4'), ('./data/B_frame') , 1)
+pixel_mm = video_to_pixel_mm(('Video_Tests\B_test_self.mp4'), ('./data/B_frame') , 1)
+print(pixel_mm)
