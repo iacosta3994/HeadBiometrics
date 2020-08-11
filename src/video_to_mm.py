@@ -39,6 +39,9 @@ def video_to_pixel_mm (origin_video, saved_frame_name, use_every_x_frame):
                 if len(list_mag_stripe_w_h) == 0:
                     print("found no magstripe")
                     break
+                if ((len(list_mag_stripe_w_h)) > 10):
+                    list_mag_stripe_w_h = sorted(list_mag_stripe_w_h)
+                    list_mag_stripe_w_h = list_mag_stripe_w_h[1:]
                 mean_mag_stripe_w_h = (np.mean(list_mag_stripe_w_h, axis=0))
                 pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h, mean_mag_stripe_w_h))
                 pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
