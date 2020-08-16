@@ -1,0 +1,1 @@
+''' This py wil need to have user input to have the fron to nape measurement accounted for, this py will also be used to get the heads length in pixels. This will use ear detection cascades to find length.'''
