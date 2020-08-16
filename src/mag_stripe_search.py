@@ -28,7 +28,7 @@ def detect_mag_stripe(contours, filename_canny):                                
             rect = cv2.minAreaRect(contour)                                                         # Creates a variable with the rectangles data
             (x, y), (width, height), angle = rect                                                   # Assignes values from rect to get the height and width and location of the rectangle
             aspectRatio = min(width, height) / max(width, height)                                   # Rectangle can be flipped so did min max  to account for this issue
-            test_draw_magstripe_contour(contour, filename_canny)                                    # Test drawing function
+            #test_draw_magstripe_contour(contour, filename_canny)                                   # Test drawing function
             if aspectRatio >= .075 and aspectRatio <= .16:                                          # Has aspect ratio to look for card in diffrent angles. .1 is true demensions, but some visual distortion exsists
                 if height > 10 and width > 10:                                                      # If the box is bigger than 10 by 10 pixels, to filter out artifacts
                     return (width, height)                                                          # The pixel height and width of card is returned
