@@ -35,10 +35,12 @@ def video_to_pixel_mm (origin_video, saved_frame_name, use_every_x_frame):      
                 if mag_stripe_w_h:                                                                                      # It checks if any width and height was in the var
                     list_mag_stripe_w_h.append(mag_stripe_w_h)                                                          # Appends data into list mag stripe to be consolidated after it finishes with loop
                 current_frame_idx += frames_to_skip                                                                     # Ticks the counter for the next idx
+
             else:                                                                                                       # Once all the frames have been processed continue below
                 if len(list_mag_stripe_w_h) == 0:                                                                       # If list_mag_stripe_w_h didnt return anything stop the loop
                     print("found no magstripe")
                     break
+
                 #if ((len(list_mag_stripe_w_h)) > 11):                                                                   # Checks if lsit of data is longer than 10 recorded numbers
                 #    list_mag_stripe_w_h = sorted(list_mag_stripe_w_h)                                                   # Sorts the list
                 #    list_mag_stripe_w_h = list_mag_stripe_w_h[10:]                                                       # Removes the smallest var in list
@@ -50,7 +52,10 @@ def video_to_pixel_mm (origin_video, saved_frame_name, use_every_x_frame):      
 
 
                 mean_mag_stripe_w_h = (np.mean(list_mag_stripe_w_h, axis=0))                                            # Creates an avg of the W and H variables
+
                 pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h, mean_mag_stripe_w_h))                                # This divides measured H and W witht the avg this will have a H and W square
+
                 pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)                                                 # Removes the variable from a square to an avg unit of h and w
+
                 return pixel_mm_mean
 #video_to_pixel_mm(('Video_Tests\B_test_Tom.mp4'), ('./data/B_frame') , 1)
