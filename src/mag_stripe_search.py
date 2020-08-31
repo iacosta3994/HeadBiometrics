@@ -27,7 +27,7 @@ def detect_mag_stripe(contours, filename_canny):                                
         if len(approx ) == 4:                                                                       # If the contour has 4 sides
             (x, y), (width, height), angle = cv2.minAreaRect(contour)                               # Creates a variable with the rectangles data
             aspectRatio = min(width, height) / max(width, height)                                   # Rectangle can be flipped because image in portrait mode is in landscape and can be one side or the other
-            if aspectRatio >= .09 and aspectRatio <= .16:                                          # Has aspect ratio to look for card in diffrent angles. .1 is true demensions, but some visual distortion exsists
+            if aspectRatio >= .08 and aspectRatio <= .16:                                          # Has aspect ratio to look for card in diffrent angles. .1 is true demensions, but some visual distortion exsists
                 if height > 10 and width > 10:                                                      # If the box is bigger than 10 by 10 pixels, to filter out artifacts
                     test_draw_magstripe_contour(contour, filename_canny)                            # Test drawing function
                     #print (aspectRatio , filename_canny)
