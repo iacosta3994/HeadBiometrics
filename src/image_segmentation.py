@@ -5,129 +5,86 @@ will allow for a boundary between the face and the hair allowing for a more prec
 the pixel length.
 Starting with opencvs implementation going to make edits to better fit ussage
 '''
-
-#include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/highgui.hpp>
-#include <iostream>
-using namespace std;
-using namespace cv;
-int main(int argc, char *argv[])
-{
-    // Load the image
-    CommandLineParser parser( argc, argv, "{@input | cards.png | input image}" );
-    Mat src = imread( samples::findFile( parser.get<String>( "@input" ) ) );
-    if( src.empty() )
-    {
-        cout << "Could not open or find the image!\n" << endl;
-        cout << "Usage: " << argv[0] << " <Input image>" << endl;
-        return -1;
-    }
-    // Show source image
-    imshow("Source Image", src);
-    // Change the background from white to black, since that will help later to extract
-    // better results during the use of Distance Transform
-    for ( int i = 0; i < src.rows; i++ ) {
-        for ( int j = 0; j < src.cols; j++ ) {
-            if ( src.at<Vec3b>(i, j) == Vec3b(255,255,255) )
-            {
-                src.at<Vec3b>(i, j)[0] = 0;
-                src.at<Vec3b>(i, j)[1] = 0;
-                src.at<Vec3b>(i, j)[2] = 0;
-            }
-        }
-    }
-    // Show output image
-    imshow("Black Background Image", src);
-    // Create a kernel that we will use to sharpen our image
-    Mat kernel = (Mat_<float>(3,3) <<
-                  1,  1, 1,
-                  1, -8, 1,
-                  1,  1, 1); // an approximation of second derivative, a quite strong kernel
-    // do the laplacian filtering as it is
-    // well, we need to convert everything in something more deeper then CV_8U
-    // because the kernel has some negative values,
-    // and we can expect in general to have a Laplacian image with negative values
-    // BUT a 8bits unsigned int (the one we are working with) can contain values from 0 to 255
-    // so the possible negative number will be truncated
-    Mat imgLaplacian;
-    filter2D(src, imgLaplacian, CV_32F, kernel);
-    Mat sharp;
-    src.convertTo(sharp, CV_32F);
-    Mat imgResult = sharp - imgLaplacian;
-    // convert back to 8bits gray scale
-    imgResult.convertTo(imgResult, CV_8UC3);
-    imgLaplacian.convertTo(imgLaplacian, CV_8UC3);
-    // imshow( "Laplace Filtered Image", imgLaplacian );
-    imshow( "New Sharped Image", imgResult );
-    // Create binary image from source image
-    Mat bw;
-    cvtColor(imgResult, bw, COLOR_BGR2GRAY);
-    threshold(bw, bw, 40, 255, THRESH_BINARY | THRESH_OTSU);
-    imshow("Binary Image", bw);
-    // Perform the distance transform algorithm
-    Mat dist;
-    distanceTransform(bw, dist, DIST_L2, 3);
-    // Normalize the distance image for range = {0.0, 1.0}
-    // so we can visualize and threshold it
-    normalize(dist, dist, 0, 1.0, NORM_MINMAX);
-    imshow("Distance Transform Image", dist);
-    // Threshold to obtain the peaks
-    // This will be the markers for the foreground objects
-    threshold(dist, dist, 0.4, 1.0, THRESH_BINARY);
-    // Dilate a bit the dist image
-    Mat kernel1 = Mat::ones(3, 3, CV_8U);
-    dilate(dist, dist, kernel1);
-    imshow("Peaks", dist);
-    // Create the CV_8U version of the distance image
-    // It is needed for findContours()
-    Mat dist_8u;
-    dist.convertTo(dist_8u, CV_8U);
-    // Find total markers
-    vector<vector<Point> > contours;
-    findContours(dist_8u, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-    // Create the marker image for the watershed algorithm
-    Mat markers = Mat::zeros(dist.size(), CV_32S);
-    // Draw the foreground markers
-    for (size_t i = 0; i < contours.size(); i++)
-    {
-        drawContours(markers, contours, static_cast<int>(i), Scalar(static_cast<int>(i)+1), -1);
-    }
-    // Draw the background marker
-    circle(markers, Point(5,5), 3, Scalar(255), -1);
-    imshow("Markers", markers*10000);
-    // Perform the watershed algorithm
-    watershed(imgResult, markers);
-    Mat mark;
-    markers.convertTo(mark, CV_8U);
-    bitwise_not(mark, mark);
-    //    imshow("Markers_v2", mark); // uncomment this if you want to see how the mark
-    // image looks like at that point
-    // Generate random colors
-    vector<Vec3b> colors;
-    for (size_t i = 0; i < contours.size(); i++)
-    {
-        int b = theRNG().uniform(0, 256);
-        int g = theRNG().uniform(0, 256);
-        int r = theRNG().uniform(0, 256);
-        colors.push_back(Vec3b((uchar)b, (uchar)g, (uchar)r));
-    }
-    // Create the result image
-    Mat dst = Mat::zeros(markers.size(), CV_8UC3);
-    // Fill labeled objects with random colors
-    for (int i = 0; i < markers.rows; i++)
-    {
-        for (int j = 0; j < markers.cols; j++)
-        {
-            int index = markers.at<int>(i,j);
-            if (index > 0 && index <= static_cast<int>(contours.size()))
-            {
-                dst.at<Vec3b>(i,j) = colors[index-1];
-            }
-        }
-    }
-    // Visualize the final image
-    imshow("Final Result", dst);
-    waitKey();
-    return 0;
-}
+from __future__ import print_function
+import cv2 as cv
+import numpy as np
+import argparse
+import random as rng
+rng.seed(12345)
+parser = argparse.ArgumentParser(description='Code for Image Segmentation with Distance Transform and Watershed Algorithm.\
+    Sample code showing how to segment overlapping objects using Laplacian filtering, \
+    in addition to Watershed and Distance Transformation')
+parser.add_argument('--input', help='Path to input image.', default='cards.png')
+args = parser.parse_args()
+src = cv.imread(cv.samples.findFile(args.input))
+if src is None:
+    print('Could not open or find the image:', args.input)
+    exit(0)
+# Show source image
+cv.imshow('Source Image', src)
+src[np.all(src == 255, axis=2)] = 0
+# Show output image
+cv.imshow('Black Background Image', src)
+kernel = np.array([[1, 1, 1], [1, -8, 1], [1, 1, 1]], dtype=np.float32)
+# do the laplacian filtering as it is
+# well, we need to convert everything in something more deeper then CV_8U
+# because the kernel has some negative values,
+# and we can expect in general to have a Laplacian image with negative values
+# BUT a 8bits unsigned int (the one we are working with) can contain values from 0 to 255
+# so the possible negative number will be truncated
+imgLaplacian = cv.filter2D(src, cv.CV_32F, kernel)
+sharp = np.float32(src)
+imgResult = sharp - imgLaplacian
+# convert back to 8bits gray scale
+imgResult = np.clip(imgResult, 0, 255)
+imgResult = imgResult.astype('uint8')
+imgLaplacian = np.clip(imgLaplacian, 0, 255)
+imgLaplacian = np.uint8(imgLaplacian)
+#cv.imshow('Laplace Filtered Image', imgLaplacian)
+cv.imshow('New Sharped Image', imgResult)
+bw = cv.cvtColor(imgResult, cv.COLOR_BGR2GRAY)
+_, bw = cv.threshold(bw, 40, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)
+cv.imshow('Binary Image', bw)
+dist = cv.distanceTransform(bw, cv.DIST_L2, 3)
+# Normalize the distance image for range = {0.0, 1.0}
+# so we can visualize and threshold it
+cv.normalize(dist, dist, 0, 1.0, cv.NORM_MINMAX)
+cv.imshow('Distance Transform Image', dist)
+_, dist = cv.threshold(dist, 0.4, 1.0, cv.THRESH_BINARY)
+# Dilate a bit the dist image
+kernel1 = np.ones((3,3), dtype=np.uint8)
+dist = cv.dilate(dist, kernel1)
+cv.imshow('Peaks', dist)
+dist_8u = dist.astype('uint8')
+# Find total markers
+contours, _ = cv.findContours(dist_8u, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+# Create the marker image for the watershed algorithm
+markers = np.zeros(dist.shape, dtype=np.int32)
+# Draw the foreground markers
+for i in range(len(contours)):
+    cv.drawContours(markers, contours, i, (i+1), -1)
+# Draw the background marker
+cv.circle(markers, (5,5), 3, (255,255,255), -1)
+cv.imshow('Markers', markers*10000)
+cv.watershed(imgResult, markers)
+#mark = np.zeros(markers.shape, dtype=np.uint8)
+mark = markers.astype('uint8')
+mark = cv.bitwise_not(mark)
+# uncomment this if you want to see how the mark
+# image looks like at that point
+#cv.imshow('Markers_v2', mark)
+# Generate random colors
+colors = []
+for contour in contours:
+    colors.append((rng.randint(0,256), rng.randint(0,256), rng.randint(0,256)))
+# Create the result image
+dst = np.zeros((markers.shape[0], markers.shape[1], 3), dtype=np.uint8)
+# Fill labeled objects with random colors
+for i in range(markers.shape[0]):
+    for j in range(markers.shape[1]):
+        index = markers[i,j]
+        if index > 0 and index <= len(contours):
+            dst[i,j,:] = colors[index-1]
+# Visualize the final image
+cv.imshow('Final Result', dst)
+cv.waitKey()
