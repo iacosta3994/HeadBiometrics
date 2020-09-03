@@ -52,7 +52,7 @@ cv.normalize(dist, dist, 0, 1.0, cv.NORM_MINMAX)
 cv.imshow('Distance Transform Image', dist)
 _, dist = cv.threshold(dist, 0.4, 1.0, cv.THRESH_BINARY)
 # Dilate a bit the dist image
-kernel1 = np.ones((3,3), dtype=np.uint8)
+kernel1 = np.ones((3, 3), dtype=np.uint8)
 dist = cv.dilate(dist, kernel1)
 cv.imshow('Peaks', dist)
 dist_8u = dist.astype('uint8')
@@ -64,7 +64,7 @@ markers = np.zeros(dist.shape, dtype=np.int32)
 for i in range(len(contours)):
     cv.drawContours(markers, contours, i, (i+1), -1)
 # Draw the background marker
-cv.circle(markers, (5,5), 3, (255,255,255), -1)
+cv.circle(markers, (5, 5), 3, (255, 255, 255), -1)
 cv.imshow('Markers', markers*10000)
 cv.watershed(imgResult, markers)
 #mark = np.zeros(markers.shape, dtype=np.uint8)
@@ -76,15 +76,15 @@ mark = cv.bitwise_not(mark)
 # Generate random colors
 colors = []
 for contour in contours:
-    colors.append((rng.randint(0,256), rng.randint(0,256), rng.randint(0,256)))
+    colors.append((rng.randint(0, 256), rng.randint(0, 256), rng.randint(0, 256)))
 # Create the result image
 dst = np.zeros((markers.shape[0], markers.shape[1], 3), dtype=np.uint8)
 # Fill labeled objects with random colors
 for i in range(markers.shape[0]):
     for j in range(markers.shape[1]):
-        index = markers[i,j]
+        index = markers[i, j]
         if index > 0 and index <= len(contours):
-            dst[i,j,:] = colors[index-1]
+            dst[i, j, :] = colors[index-1]
 # Visualize the final image
 cv.imshow('Final Result', dst)
 cv.waitKey()
