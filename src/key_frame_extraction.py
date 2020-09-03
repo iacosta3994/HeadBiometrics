@@ -1,27 +1,44 @@
 import cv2
 import os
-import array as arr
+import numpy as np
+
+# protocol://host:port/script_name?script_params|auth
+# Function splits incoming mp4 and returns
 
 
-# Function splits incoming mp4 and sends finished frames to saved_frames_locations
-def split_frames(cap_origin_path, video_name, frames_to_skip):
+def split_frames(cap_origin_path, video_name):
     # Assigning video from file to variable cap
     cap = cv2.VideoCapture(cap_origin_path)
-    retrieved, frame = cap.read()  # (Retval, image) | Grabs, decodes, and returns for next frame
     # Starting with the first{0} frame
-    current_frame_idx = 0
-    split_frame_array = arr.array()
-    while cap.isOpened():                                                       # While there are still images in cap: do the following
-        # Establishing filename with the sequential number of frame
-        filename = video_name + str(current_frame_idx) + '.jpeg'
 
-        if retrieved:  # True if an image was retrieved
-            # cv2.imwrite(filename, frame)                                        #   Save the file with filename, and the frame in while loop
-            current_frame_idx += frames_to_skip  # Prepare current for next itteration
-            # Set(propId, value)| Allows to skip to later frame in cap, new loop occurs
-            cap.set(1, current_frame_idx)
-            split_frame_array.append(filename, frame)
-        else:  # If no image was inputed
-            cap.release()  # Deallocates used memory and clears capture pointer
-            # Return value will be used to determine stopping frame in A&B_quantify, Loop ends
-            return(current_frame_idx, split_frame_array)
+    images = []
+
+    # CAP_PROP_POS_FRAMES = 1
+    pos_frame = cap.get(1)
+
+    while True:  # While there are still images in cap: do the following
+        # (Retval, image) | Grabs, decodes, and returns for next frame
+        retrieved, frame = cap.read()
+        if retrieved:
+            #Adds frame to list
+            images.append(frame)
+            #Updates frame count
+            pos_frame = cap.get(1)
+        else:
+            cap.set(1, pos_frame)
+            break
+
+        # if frame position is the same as the expected frame count break loop
+        if cap.get(1) == cap.get(cv2.CAP_PROP_FRAME_COUNT):
+            break
+
+    # Return value contains array of the individual frames
+    split_frames_array = np.array(images)
+    print("returning array")
+    return split_frames_array
+
+
+def save_image(filename, frame):
+    filename = video_name + str(pos_frame) + '.jpeg'
+    #save_image(filename, frame)
+    cv2.imwrite(filename, frame)
