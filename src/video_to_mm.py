@@ -11,46 +11,39 @@ import cv2
 from src.key_frame_extraction import *
 from src.canny_edge_detection_cv2 import *
 from src.mag_stripe_search import *
+from src.face_detect_auto_crop import *
+
 
 
 # Funtion that inputs video mp4, name of scene with location, variable to determine how many frames to splice
-def video_to_pixel_mm(origin_video, saved_frame_name, use_every_x_frame):
+def video_to_pixel_mm(cap_origin_path, video_name):
 
-    # Assinging the input variables to local variables for Function
-    cap_origin_video, saved_frames_location,  frames_to_skip = (
-        origin_video, saved_frame_name, use_every_x_frame)
+    # Splits the frame then returns the array of frames
+    split_frame_array = split_frames(cap_origin_path, video_name,)
 
-    # Splits the frame then returns the frame that is being worked on
-    final_frame_idx = split_frames(cap_origin_video, saved_frames_location, frames_to_skip)
-    # Starting with the first frame
-    current_frame_idx = 0
+    frame_proccessed = 0
 
     # Later this list will have all the H and W of the mag stripe
     list_mag_stripe_w_h = []
-    # Measured Magstripe is 85.60 mm wide and 8.37 mm tall
-    mag_stripe_constant_w_h = [85.60, 8.37]
+    # Measured Magstripe 1 is 85.60 mm wide and 8.37 mm tall
+    mag_stripe_constant_w_h_1 = [85.60, 8.37]
 
-    while os.path:
+    while (len(split_frame_array)) > frame_proccessed:
+        for frame in split_frame_array:
+            #cv2.imwrite('name.png', frame)
 
-        # The name of the frame being proccesed
-        filename = saved_frames_location + str(current_frame_idx) + '.jpeg'
-        # Similar to prior but indicates the version with canny that is used for printing out the test
-        filename_canny = saved_frames_location + '_canny' + str(current_frame_idx) + '.jpeg'
+            #face detect auto crop input frame output face crop
+            face_crop = face_detect_auto_crop(frame,False)
 
-        # While there are frames to process continue
-        with open('filename', 'w') as f:
-            # If the current frame is still part of the video || continue
-            if current_frame_idx <= final_frame_idx:
-                # Variable now has the canny image to process
-                canny_image = make_canny_magstripe(filename, filename_canny)
-                # canny_image var is then used with get_magstripe_demensions
-                mag_stripe_w_h = get_magstripe_demensions(canny_image, filename_canny)
-                # It checks if any width and height was in the var
-                if mag_stripe_w_h:
-                    # Appends data into list mag stripe to be consolidated after it finishes with loop
-                    list_mag_stripe_w_h.append(mag_stripe_w_h)
-                # Ticks the counter for the next idx
-                current_frame_idx += frames_to_skip
+            canny_image = make_canny_magstripe(face_crop)
+            # canny_image var is then used with get_magstripe_demensions
+            mag_stripe_w_h = get_magstripe_demensions(canny_image)
+            # It checks if any width and height was in the var
+            if mag_stripe_w_h:
+                # Appends data into list mag stripe to be consolidated after it finishes with loop
+                list_mag_stripe_w_h.append(mag_stripe_w_h)
+            # Ticks the counter for the next idx
+
 
             # Once all the frames have been processed continue below
             else:
@@ -70,16 +63,18 @@ def video_to_pixel_mm(origin_video, saved_frame_name, use_every_x_frame):
                 '''
                 standard deviation to remove the outliers in list_mag_stripe_w_h using [2] as factor to remove from list or not
 
+
+                make sure its width height and not swapped
                 '''
 
                 # Creates an avg of the W and H variables
                 mean_mag_stripe_w_h = (np.mean(list_mag_stripe_w_h, axis=0))
 
-                # pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h, mean_mag_stripe_w_h))                                # This divides measured H and W witht the avg this will have a H and W square
+                pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_1, mean_mag_stripe_w_h))                                # This divides measured H and W witht the avg this will have a H and W square
 
-                # pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)                                                 # Removes the variable from a square to an avg unit of h and w
-                pixel_mm_mean = True
+                pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)                                                 # Removes the variable from a square to an avg unit of h and w
+
                 return pixel_mm_mean
 
 
-video_to_pixel_mm(('Video_Tests\B_test_self.mp4'), ('./data/B_frame'), 1)
+video_to_pixel_mm(('Video_Tests\B_test_self.mp4'), ('./data/B_frame'))
