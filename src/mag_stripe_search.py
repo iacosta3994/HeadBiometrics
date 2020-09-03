@@ -7,17 +7,17 @@ import cv2
 
 
 # End function that locates the contours in search for a rectangle with deminsions similar to a magnetic stripe
-def get_magstripe_demensions(canny_image, filename_canny):
+def get_magstripe_demensions(canny_image):
     # Generates a hierarchy of contours
     contours, hierarchy = cv2.findContours(canny_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     # Detects contours with 4 sides and an aspec ratio relating to magstripe
-    mag_stripe_h_w = detect_mag_stripe(contours, filename_canny)
+    mag_stripe_h_w = detect_mag_stripe(canny_image, contours)
     # Returns the pixel height and width with angle in mind
     return mag_stripe_h_w
 
 
 # Test function that draws a bounding box around contours that detects as magstripe
-def test_draw_magstripe_contour(contour, filename_canny, color=(0, 255, 0)):
+def test_draw_magstripe_contour(img, contour, color=(0, 255, 0)):
     # Incoming contour is inputed into var rect
     rect = cv2.minAreaRect(contour)
     # Using the contour box points are created
@@ -25,13 +25,13 @@ def test_draw_magstripe_contour(contour, filename_canny, color=(0, 255, 0)):
     # Int64 using boxPoints as input
     box = np.int0(box)
     # Opens the canny image that will be written on
-    canny_image_write = cv2.imread(filename_canny)
+
     # Creates green box to output file path
-    cv2.imwrite(filename_canny, cv2.drawContours(canny_image_write, [box], 0, color, 2))
+    cv2.imwrite('filename_canny.png', cv2.drawContours(img, [box], 0, color, 2))
 
 
 # Narrows down the contours in search for the one that best fits
-def detect_mag_stripe(contours, filename_canny):
+def detect_mag_stripe(canny_image, contours):
     for contour in contours:
         # Epsilon helps account for possible inperfections in shape of magstripe (Glare, off angles, or from the Blurring)
         epsilon = (0.04 * cv2.arcLength(contour, True))
@@ -49,7 +49,7 @@ def detect_mag_stripe(contours, filename_canny):
                 # If the box is bigger than 10 by 10 pixels, to filter out artifacts
                 if height > 5 and width > 5:
                     # Test drawing function
-                    test_draw_magstripe_contour(contour, filename_canny)
-                    #print (aspectRatio , filename_canny)
+                    #test_draw_magstripe_contour(canny_image, contour)
+                    #print (aspectRatio )
                     # The pixel height and width of card is returned
                     return [width, height, width * height]
