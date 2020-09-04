@@ -16,7 +16,7 @@ def split_frames(cap_origin_path):
     # CAP_PROP_POS_FRAMES = 1
     pos_frame = cap.get(1)
 
-    while True:  
+    while True:
         # (Retval, image) | Grabs, decodes, and returns for next frame
         retrieved, frame = cap.read()
         if retrieved:
@@ -36,7 +36,6 @@ def split_frames(cap_origin_path):
 
     # Return value contains array of the individual frames
     split_frames_array = np.array(images)
-    print("returning array")
     return split_frames_array
 
 
