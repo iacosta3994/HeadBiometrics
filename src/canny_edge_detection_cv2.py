@@ -5,8 +5,9 @@ from matplotlib import pyplot as plt
 
 # Function will load frame from file_path and will save canny edge image in same directory with new name
 def make_canny_magstripe(img):
-    # Blurring to reduce artifacts
+
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Blurring to reduce artifacts
     blurred_img = cv2.GaussianBlur(gray_img, (5, 5), 0)
     clahe = cv2.createCLAHE()  # Contrast Limited Adaptive Histogram Equalization
     # Adjsuts contrast in image to allow maggstripe to be darker for images with high gamma
