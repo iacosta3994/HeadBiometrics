@@ -16,14 +16,18 @@ def face_detect_auto_crop(img, save_result):
 
     #img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     face = face_cascade.detectMultiScale(img, 1.1, 3, minSize=(100, 100))
-    if face is None:
+    eye = eye_cascade.detectMultiScale(img,1.1, 3, minSize =(100,100))
+
+    cascade_used = eye
+
+    if cascade_used is None:
         return None
     if save_result:
-        for (x, y, w, h) in face:
+        for (x, y, w, h) in cascade_used:
             cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
         cv2.imwrite('img.png', img)
 
-    for (x, y, w, h) in face:
+    for (x, y, w, h) in cascade_used:
         r = max(w, h) / 2
         centerx = x + w / 2
         centery = y + h / 2
