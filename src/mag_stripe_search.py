@@ -7,6 +7,8 @@ import cv2
 import uuid
 
 # End function that locates the contours in search for a rectangle with deminsions similar to a magnetic stripe
+
+
 def get_magstripe_demensions(img):
     # Generates a hierarchy of contours
     contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -45,24 +47,24 @@ def detect_mag_stripe(img, contours):
     return magstripe_list
 
 
-
 # Test function that draws a bounding box around contours that detects as magstripe
 def test_draw_magstripe_contour(img, contour, magstripe_name, color=(0, 255, 0)):
-    #easier to reestablish values than to port over
+    # easier to reestablish values than to port over
     rect = cv2.minAreaRect(contour)
     (x, y), (width, height), angle = rect
-    #Finds the center of each contour to label
-    M = cv2.moments(c)
-	cX = int(M["m10"] / M["m00"])
-	cY = int(M["m01"] / M["m00"])
+    # Finds the center of each contour to label
 
     # Using the contour box points are created
     box = cv2.boxPoints(rect)
     # Int64 using boxPoints as input
     box = np.int0(box)
 
-    cv2.putText(img, text= str(magstripe_name), org=(cx,cy),
-            fontFace= cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,0,0),
-            thickness=2, lineType=cv2.LINE_AA)
+    M = cv2.moments(contour)
+    cX = int(M["m10"] / M["m00"])
+    cY = int(M["m01"] / M["m00"])
+
+    cv2.putText(img, text=str(magstripe_name), org=(cx, cy),
+                fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 0, 0),
+                thickness=2, lineType=cv2.LINE_AA)
     # Creates green box to output file path
     cv2.imwrite('img' + magstripe_name + '.png', cv2.drawContours(img, [box], 0, color, 2))
