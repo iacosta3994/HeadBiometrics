@@ -31,7 +31,6 @@ def split_frames(cap_origin_path):
 
         # if frame position is the same as the expected frame count break loop
         if cap.get(1) == cap.get(cv2.CAP_PROP_FRAME_COUNT):
-            print("frame is same as expected")
             break
 
     # Return value contains array of the individual frames
