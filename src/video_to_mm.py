@@ -38,12 +38,14 @@ def video_to_pixel_mm(cap_origin_path):
             if np.any(face_crop) != None:
                 canny_image = make_canny_magstripe(face_crop)
                 # canny_image var is then used with get_magstripe_demensions
-                mag_stripe_w_h = get_magstripe_demensions(canny_image)
-                # It checks if any width and height was in the var
-                if mag_stripe_w_h:
-                    # Appends data into list mag stripe to be consolidated after it finishes with loop
-                    list_mag_stripe_w_h.append(mag_stripe_w_h)
-                    # Ticks the counter for the next frame
+                mag_stripe_w_h_list = get_magstripe_demensions(canny_image)
+
+                for mag_stripe_w_h in mag_stripe_w_h_list:
+                    # It checks if any width and height was in the var
+                    if mag_stripe_w_h:
+                        # Appends data into list mag stripe to be consolidated after it finishes with loop
+                        list_mag_stripe_w_h.append(mag_stripe_w_h)
+                        # Ticks the counter for the next frame
             frame_proccessed += 1
 
             # Once all the frames have been processed continue below
@@ -70,4 +72,4 @@ def video_to_pixel_mm(cap_origin_path):
     return pixel_mm_mean
 
 
-video_to_pixel_mm(('Video_Tests\B_test_self.mp4'))
+video_to_pixel_mm(('Video_Tests\A_test_self.mp4'))
