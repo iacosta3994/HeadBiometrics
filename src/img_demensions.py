@@ -1,3 +1,5 @@
+import cv2
+
 def print_img_demensions(img):
     height, width = img.shape[:2]
     dimensions = img.shape
