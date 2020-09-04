@@ -4,7 +4,7 @@ import sys
 import numpy as np
 import matplotlib
 import cv2
-
+import uuid
 
 # End function that locates the contours in search for a rectangle with deminsions similar to a magnetic stripe
 def get_magstripe_demensions(canny_image):
@@ -52,4 +52,5 @@ def detect_mag_stripe(canny_image, contours):
                     #test_draw_magstripe_contour(canny_image, contour)
                     #print (aspectRatio )
                     # The pixel height and width of card is returned
-                    return [width, height, width * height]
+                    magstripe_name = str(uuid.uuid4())
+                    return [width, height, width * height, magstripe_name]
