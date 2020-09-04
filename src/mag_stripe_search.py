@@ -16,16 +16,6 @@ def get_magstripe_demensions(img):
     return mag_stripe_h_w
 
 
-# Test function that draws a bounding box around contours that detects as magstripe
-def test_draw_magstripe_contour(img, rect, magstripe_name, color=(0, 255, 0)):
-    # Using the contour box points are created
-    box = cv2.boxPoints(rect)
-    # Int64 using boxPoints as input
-    box = np.int0(box)
-    # Creates green box to output file path
-    cv2.imwrite('img' + magstripe_name + '.png', cv2.drawContours(img, [box], 0, color, 2))
-
-
 # Narrows down the contours in search for the one that best fits
 def detect_mag_stripe(img, contours):
     magstripe_list = []
@@ -51,5 +41,28 @@ def detect_mag_stripe(img, contours):
                     magstripe_name = str(uuid.uuid4())
                     magstripe_list.append([width, height, width * height, magstripe_name])
                     # Test drawing function
-                    test_draw_magstripe_contour(img, rect, magstripe_name)
+                    test_draw_magstripe_contour(img, contour, magstripe_name)
     return magstripe_list
+
+
+
+# Test function that draws a bounding box around contours that detects as magstripe
+def test_draw_magstripe_contour(img, contour, magstripe_name, color=(0, 255, 0)):
+    #easier to reestablish values than to port over
+    rect = cv2.minAreaRect(contour)
+    (x, y), (width, height), angle = rect
+    #Finds the center of each contour to label
+    M = cv2.moments(c)
+	cX = int(M["m10"] / M["m00"])
+	cY = int(M["m01"] / M["m00"])
+
+    # Using the contour box points are created
+    box = cv2.boxPoints(rect)
+    # Int64 using boxPoints as input
+    box = np.int0(box)
+
+    cv2.putText(img, text= str(magstripe_name), org=(cx,cy),
+            fontFace= cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,0,0),
+            thickness=2, lineType=cv2.LINE_AA)
+    # Creates green box to output file path
+    cv2.imwrite('img' + magstripe_name + '.png', cv2.drawContours(img, [box], 0, color, 2))
