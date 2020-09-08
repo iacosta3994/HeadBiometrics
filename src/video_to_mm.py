@@ -12,7 +12,7 @@ from src.key_frame_extraction import *
 from src.canny_edge_detection_cv2 import *
 from src.mag_stripe_search import *
 from src.face_detect_auto_crop import *
-
+from src.img_demensions import *
 
 # Funtion that inputs video mp4, name of scene with location, variable to determine how many frames to splice
 def video_to_pixel_mm(cap_origin_path):
@@ -29,14 +29,15 @@ def video_to_pixel_mm(cap_origin_path):
 
     while (len(split_frame_array)) >= frame_proccessed:
         for frame in split_frame_array:
-            #cv2.imwrite('name.png', frame)
 
             # face detect auto crop input frame output face crop
 
-            face_crop = face_detect_auto_crop(frame, False)
+            #face_crop = face_detect_auto_crop(frame, False)
+            #if np.any(face_crop) != None:
 
-            if np.any(face_crop) != None:
-                canny_image = make_canny_magstripe(face_crop)
+                # Canny function for magstripe benchmark
+                canny_image = make_canny_magstripe(frame)
+
                 # canny_image var is then used with get_magstripe_demensions
                 mag_stripe_w_h_list = get_magstripe_demensions(canny_image)
 
@@ -46,7 +47,7 @@ def video_to_pixel_mm(cap_origin_path):
                         # Appends data into list mag stripe to be consolidated after it finishes with loop
                         list_mag_stripe_w_h.append(mag_stripe_w_h)
                         # Ticks the counter for the next frame
-            frame_proccessed += 1
+                frame_proccessed += 1
 
             # Once all the frames have been processed continue below
 
@@ -72,4 +73,4 @@ def video_to_pixel_mm(cap_origin_path):
     return pixel_mm_mean
 
 
-video_to_pixel_mm(('Video_Tests\A_test_self.mp4'))
+video_to_pixel_mm(('Video_Tests\B_test_Tom.mp4'))
