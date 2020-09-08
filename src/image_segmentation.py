@@ -25,7 +25,9 @@ cv.imshow('Source Image', src)
 src[np.all(src == 255, axis=2)] = 0
 # Show output image
 cv.imshow('Black Background Image', src)
-kernel = np.array([[1, 1, 1], [1, -8, 1], [1, 1, 1]], dtype=np.float32)
+kernel = np.array([[1, 1, 1],
+                   [1, -8, 1],
+                   [1, 1, 1]], dtype=np.float32)
 # do the laplacian filtering as it is
 # well, we need to convert everything in something more deeper then CV_8U
 # because the kernel has some negative values,
