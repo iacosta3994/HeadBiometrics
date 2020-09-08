@@ -2,7 +2,6 @@
 import os
 import sys
 import numpy as np
-import matplotlib
 import cv2
 import uuid
 
@@ -10,8 +9,10 @@ import uuid
 
 
 def get_magstripe_demensions(img):
+    #copies image
+    img_fc = img.copy()
     # Generates a hierarchy of contours
-    contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(img_fc, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # Detects contours with 4 sides and an aspec ratio relating to magstripe
     mag_stripe_h_w = detect_mag_stripe(img, contours)
     # Returns the pixel height and width with angle in mind
@@ -62,9 +63,9 @@ def test_draw_magstripe_contour(img, contour, magstripe_name, color=(0, 255, 0))
     M = cv2.moments(contour)
     cx = int(M["m10"] / M["m00"])
     cy = int(M["m01"] / M["m00"])
-
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     cv2.putText(img, text=str(magstripe_name), org=(cx, cy),
-                fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 0, 0),
+                fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0),
                 thickness=2, lineType=cv2.LINE_AA)
     # Creates green box to output file path
-    cv2.imwrite('img' + magstripe_name + '.png', cv2.drawContours(img, [box], 0, color, 2))
+    cv2.imwrite('Data/'+'img_' + magstripe_name + '.png', cv2.drawContours(img, [box], 0, color, 2))
