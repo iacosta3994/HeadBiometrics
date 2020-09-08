@@ -8,12 +8,12 @@ def make_canny_magstripe(img):
 
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # Blurring to reduce artifacts
-    blurred_img = cv2.GaussianBlur(gray_img, (5, 5), 0)
+    blurred_img = cv2.GaussianBlur(gray_img, (7, 7), 0)
     clahe = cv2.createCLAHE()  # Contrast Limited Adaptive Histogram Equalization
     # Adjsuts contrast in image to allow maggstripe to be darker for images with high gamma
     clahe_img = clahe.apply(blurred_img)
     # 25 works well Sets a threshold in search for the pixels near the color of black i.e magstripe
-    ret, thresh1 = cv2.threshold(clahe_img, 75, 255, cv2.THRESH_BINARY)
+    ret, thresh1 = cv2.threshold(clahe_img, 25, 255, cv2.THRESH_BINARY)
     # Create edges around  image with auto min and max values
     img_canny = auto_canny(thresh1)
     # Sets a kernal 3*3 used for canny img_canny_dilation
