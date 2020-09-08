@@ -23,7 +23,7 @@ def video_to_pixel_mm(cap_origin_path):
     frame_proccessed = 0
 
     # Later this list will have all the H and W of the mag stripe
-    list_mag_stripe_w_h = []
+    list_mag_stripe_w_h_a = []
     # Measured Magstripe 1 is 85.60 mm wide and 8.37 mm tall
     mag_stripe_constant_w_h_1 = [85.60, 8.37]
 
@@ -62,15 +62,12 @@ def video_to_pixel_mm(cap_origin_path):
     '''
 
     # Creates an avg of the W and H variables
-    #mean_mag_stripe_w_h = (np.mean(list_mag_stripe_w_h, axis=0))
+    mean_mag_stripe_w_h = (np.mean(list_mag_stripe_w_h, axis=0))
 
     # This divides measured H and W witht the avg this will have a H and W square
-    #pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_1, mean_mag_stripe_w_h))
+    pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_1, mean_mag_stripe_w_h[:1]))
 
     # Removes the variable from a square to an avg unit of h and w
-    #pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
-    pixel_mm_mean = True
+    pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
+
     return pixel_mm_mean
-
-
-video_to_pixel_mm(('Video_Tests\B_test_Tom.mp4'))
