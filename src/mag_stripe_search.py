@@ -68,6 +68,9 @@ def test_draw_magstripe_contour(img, contour, magstripe_name, color=(0, 255, 0))
     cx = int(M["m10"] / M["m00"])
     cy = int(M["m01"] / M["m00"])
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    folder_check = os.path.isdir("Data")
+    if not folder_check:
+        os.makedirs("Data")
     cv2.putText(img, text=str(magstripe_name), org=(cx, cy),
                 fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0),
                 thickness=2, lineType=cv2.LINE_AA)
