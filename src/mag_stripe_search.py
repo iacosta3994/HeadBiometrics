@@ -34,6 +34,8 @@ def detect_mag_stripe(img, contours):
             # Creates a variable with the rectangles data
             (x, y), (width, height), angle = rect
             # Rectangle can be flipped because image in portrait mode is in landscape and can be one side or the other
+            if width < height:
+                width, height = height, width
             aspectRatio = min(width, height) / max(width, height)
             if aspectRatio >= .0909 and aspectRatio <= .104:
                 # The pixel height and width of card is returned
