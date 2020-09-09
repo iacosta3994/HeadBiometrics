@@ -54,9 +54,8 @@ def video_to_pixel_mm(cap_origin_path):
             # Once all the frames have been processed continue below
 
     with open('magstripe_pixel_w_h_a_n.txt', 'w') as file_txt:
-        for w_h_a in list_mag_stripe_w_h_ar_mn:
-            file_txt.write(str(w_h_a) + " ")
-            file_txt.write('\n')
+        for w_h_ar_n in list_mag_stripe_w_h_ar_mn:
+            file_txt.write(str(w_h_ar_n) + ' ' + '\n')
 
     '''
     standard deviation to remove the outliers in list_mag_stripe_w_h_ar_mn using [2] as factor to remove from list or not
