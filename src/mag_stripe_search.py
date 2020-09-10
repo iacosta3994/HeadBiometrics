@@ -36,16 +36,17 @@ def detect_mag_stripe(img, contours):
             # Rectangle can be flipped because image in portrait mode is in landscape and can be one side or the other
             if width < height:
                 width, height = height, width
-            if height >= 10:
+            if height <= 15:
                 continue
-            aspectRatio = min(width, height) / max(width, height)
-            if .088 <= aspectRatio <= 0.10755555555:
+            aspectRatio = height / width
+            if 0.09288888888 <= aspectRatio <= 0.10266666666:
                 # The pixel height and width of card is returned
                 magstripe_name = str(uuid.uuid4())
                 magstripe_list.append([width, height, aspectRatio, magstripe_name])
                 # Test drawing function
                 test_draw_magstripe_contour(img, contour, magstripe_name)
-            elif 0.14174864965  <= aspectRatio <= 0.17324834958:
+                #test_draw_magstripe_contour(img, contour, magstripe_name)
+            elif 0.14962357464  <= aspectRatio <= 0.1653734246:
                 # The pixel height and width of card is returned
                 magstripe_name = str(uuid.uuid4())
                 magstripe_list.append([width, height, aspectRatio, magstripe_name])
