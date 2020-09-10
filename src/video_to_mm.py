@@ -8,6 +8,7 @@ import sys
 import numpy as np
 import matplotlib
 import cv2
+from operator import truediv
 from src.key_frame_extraction import *
 from src.canny_edge_detection_cv2 import *
 from src.mag_stripe_search import *
@@ -64,25 +65,27 @@ def video_to_pixel_mm(cap_origin_path):
 
     mag_stripe_w_h = []
     for mag_stripe_w_h_ar_mn in list_mag_stripe_w_h_ar_mn:
-        if .088 <= mag_stripe_w_h_ar_mn[2] <= 0.10755555555:
+        if 0.09288888888 <= mag_stripe_w_h_ar_mn[2] <= 0.10266666666:
             mag_stripe_w_h = mag_stripe_w_h_ar_mn[:1]
             # Creates an avg of the W and H variables
             mean_mag_stripe_w_h = (np.mean(mag_stripe_w_h, axis=0))
             # This divides measured H and W witht the avg this will have a H and W square
-            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_1, mean_mag_stripe_w_h[:1]))
+            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_1, mean_mag_stripe_w_h))
             # Removes the variable from a square to an avg unit of h and w
             pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
             return pixel_mm_mean
 
-        elif 0.14174864965 <= mag_stripe_w_h_ar_mn[2] <= 0.17324834958:
+        elif 0.14962357464 <= mag_stripe_w_h_ar_mn[2] <= 0.1653734246:
             mag_stripe_w_h = mag_stripe_w_h_ar_mn[:1]
             # Creates an avg of the W and H variables
-            mean_mag_stripe_w_h = (np.mean(mag_stripe_w_h, axis=0))
+            mean_mag_stripe_w_h = [np.mean(mag_stripe_w_h, axis=0)]
             # This divides measured H and W witht the avg this will have a H and W square
-            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_2, mean_mag_stripe_w_h[:1]))
+            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_2, mean_mag_stripe_w_h))
             # Removes the variable from a square to an avg unit of h and w
             pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
             return pixel_mm_mean
 
         else:
             return ("error magstripe detected not within ratio bounds")
+
+video_to_pixel_mm('Video_Tests\A_test_Tom.mp4')
