@@ -22,10 +22,7 @@ def face_detect_auto_crop(img, save_result):
 
     if cascade_used is None:
         return None
-    if save_result:
-        for (x, y, w, h) in cascade_used:
-            cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
-        cv2.imwrite('img.png', img)
+
 
     for (x, y, w, h) in cascade_used:
         r = max(w, h) / 2
@@ -36,4 +33,8 @@ def face_detect_auto_crop(img, save_result):
         nr = int(r * 2)
         face_img = img[ny:ny+nr, nx:nx+nr]
         final_img = cv2.resize(face_img, (200, 200))
+            if save_result:
+                for (x, y, w, h) in cascade_used:
+                    cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
+                cv2.imwrite('img.png', final_img)
         return final_img
