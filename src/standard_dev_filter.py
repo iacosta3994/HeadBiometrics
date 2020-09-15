@@ -8,7 +8,7 @@ def std_filter(list, idx): #[[number,number,number], [number, number,number]...]
         if isinstance(item,str) == True:
             print("item in element must be an int or float")
             break
-        idx_pool_variance.append(item)
+        idx_pool.append(item)
     standard_deviation = statistics.stdev(idx_pool)
     element_mean = [np.mean(list[idx], axis=0)]
 
