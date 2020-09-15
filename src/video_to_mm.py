@@ -61,8 +61,8 @@ def video_to_pixel_mm(cap_origin_path):
 
 
 
-    mean_mag_stripe_area = [np.mean(list_mag_stripe_w_h_area_ratio_magname[0], axis=0)]
-
+    mean_mag_stripe_area = [np.mean(list_mag_stripe_w_h_area_ratio_magname[2], axis=0)]
+    mean_mag_stripe_aspect_ratio = [np.mean(list_mag_stripe_w_h_area_ratio_magname[3], axis = 0)]
 
     '''
     standard deviation to remove the outliers in list_mag_stripe_w_h_area_ratio_magname using [2] as factor to remove from list or not
