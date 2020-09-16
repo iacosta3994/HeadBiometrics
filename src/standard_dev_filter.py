@@ -1,9 +1,9 @@
 import numpy as np
 import statistics
 
-def std_filter(list, idx):  # [[number,number,number], [number, number,number]...]
+def std_filter(list, idx, deviations_count=2):  # [[number,number,number], [number, number,number]...]
     idx_pool = []
-    float_idx_pool = np.array(idx_pool, dtype=np.float32,deviations_count=2)
+    float_idx_pool = np.array(idx_pool, dtype=np.float32)
 
     for element in list:
         item = element[idx]
