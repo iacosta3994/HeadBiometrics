@@ -13,7 +13,9 @@ from src.key_frame_extraction import *
 from src.canny_edge_detection_cv2 import *
 from src.mag_stripe_search import *
 from src.face_detect_auto_crop import *
-from src.img_demensions import *
+from src.print_img_demensions import *
+from src.standard_dev_filter import *
+from src.remove_nested import *
 
 # Funtion that inputs video mp4, name of scene with location, variable to determine how many frames to splice
 
@@ -60,18 +62,15 @@ def video_to_pixel_mm(cap_origin_path):
     '''
 
 
+    area_std_filter_list = std_filter(list_mag_stripe_w_h_area_ratio_magname, 2)
+    list_mag_stripe_filtered = remove_nested_with_idx(list_mag_stripe_w_h_area_ratio_magname, area_std_filter_list, 2)
 
-    mean_mag_stripe_area = [np.mean(list_mag_stripe_w_h_area_ratio_magname[2], axis=0)]
-    mean_mag_stripe_aspect_ratio = [np.mean(list_mag_stripe_w_h_area_ratio_magname[3], axis = 0)]
-
-    '''
-    standard deviation to remove the outliers in list_mag_stripe_w_h_area_ratio_magname using [2] as factor to remove from list or not
-    make sure its width height and not swapped
-    '''
+    aspr_std_filter_list = std_filter(list_mag_stripe_filtered, 3)
+    list_mag_stripe_filtered = remove_nested_with_idx(list_mag_stripe_filtered,aspr_std_filter_list,3)
 
     mag_stripe_w_h = []
-    for mag_stripe_w_h_area_ratio_magname in list_mag_stripe_w_h_area_ratio_magname:
-        if 0.09288888888 <= mag_stripe_w_h_area_ratio_magname[2] <= 0.10266666666:
+    for mag_stripe_w_h_area_ratio_magname in list_mag_stripe_filtered:
+        if 0.09288888888 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.10266666666:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:1]
             # Creates an avg of the W and H variables
             mean_mag_stripe_w_h = (np.mean(mag_stripe_w_h, axis=0))
@@ -81,7 +80,7 @@ def video_to_pixel_mm(cap_origin_path):
             pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
             return pixel_mm_mean
 
-        elif 0.14962357464 <= mag_stripe_w_h_area_ratio_magname[2] <= 0.1653734246:
+        elif 0.14962357464 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.1653734246:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:1]
             # Creates an avg of the W and H variables
             mean_mag_stripe_w_h = [np.mean(mag_stripe_w_h, axis=0)]
@@ -94,4 +93,4 @@ def video_to_pixel_mm(cap_origin_path):
         else:
             return ("error magstripe detected not within ratio bounds")
 
-video_to_pixel_mm('Video_Tests\A_test_Tom.mp4')
+video_to_pixel_mm('Video_Tests\B_test_alex.mp4')
