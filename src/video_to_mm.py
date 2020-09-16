@@ -64,7 +64,7 @@ def video_to_pixel_mm(cap_origin_path):
             file_txt.write(str(w_h_ar_n) + ' ' + '\n')
     '''
 
-    area_std_filter_list = std_filter(list_mag_stripe_w_h_area_ratio_magname, 2)
+    area_std_filter_list = std_filter(list_mag_stripe_w_h_area_ratio_magname, 2, 1)
     list_mag_stripe_filtered = remove_nested_with_idx(list_mag_stripe_w_h_area_ratio_magname, area_std_filter_list, 2)
 
     aspr_std_filter_list = std_filter(list_mag_stripe_filtered, 3)
@@ -76,47 +76,41 @@ def video_to_pixel_mm(cap_origin_path):
 
         if 0.08981481481 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.0953:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:1]
-            # Creates an avg of the W and H variables
-            mean_mag_stripe_w_h = (np.mean(mag_stripe_w_h, axis=0))
             # This divides measured H and W witht the avg this will have a H and W square
-            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_1, mean_mag_stripe_w_h))
+            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_1, mag_stripe_w_h))
             # Removes the variable from a square to an avg unit of h and w
             pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
             pixel_mm_mean_list.append(pixel_mm_mean)
 
         elif 0.0948444369 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.102666585:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:1]
-            # Creates an avg of the W and H variables
-            mean_mag_stripe_w_h = [np.mean(mag_stripe_w_h, axis=0)]
             # This divides measured H and W witht the avg this will have a H and W square
-            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_2, mean_mag_stripe_w_h))
+            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_2, mag_stripe_w_h))
             # Removes the variable from a square to an avg unit of h and w
             pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
             pixel_mm_mean_list.append(pixel_mm_mean)
 
-        elif 0.12314814814 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.13611111111:
+        elif 0.12314814814 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.1361:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:1]
-            # Creates an avg of the W and H variables
-            mean_mag_stripe_w_h = [np.mean(mag_stripe_w_h, axis=0)]
             # This divides measured H and W witht the avg this will have a H and W square
-            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_3, mean_mag_stripe_w_h))
+            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_3, mag_stripe_w_h))
             # Removes the variable from a square to an avg unit of h and w
             pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
             pixel_mm_mean_list.append(pixel_mm_mean)
 
         elif 0.14074074074 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.15555555555:
+        elif 0.1362 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.166142857:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:1]
-            # Creates an avg of the W and H variables
-            mean_mag_stripe_w_h = [np.mean(mag_stripe_w_h, axis=0)]
             # This divides measured H and W witht the avg this will have a H and W square
-            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_4, mean_mag_stripe_w_h))
+            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_4, mag_stripe_w_h))
             # Removes the variable from a square to an avg unit of h and w
             pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
             pixel_mm_mean_list.append(pixel_mm_mean)
 
         else:
             continue
+
     return np.mean(pixel_mm_mean_list, axis=0)
 
 
-video_to_pixel_mm('Video_Tests\B_test_self.mp4')
+video_to_pixel_mm('Video_Tests\B_test_alex.mp4')
