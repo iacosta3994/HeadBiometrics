@@ -7,11 +7,12 @@ def std_filter(list, idx):  # [[number,number,number], [number, number,number]..
 
     for element in list:
         item = element[idx]
-        if isinstance(item, str) == True:
-            print("item in element must be an int or float")
-            print(str(item))
-            break
-        idx_pool.append(item)
+        if isinstance(item, float) == True:
+            idx_pool.append(item)
+        elif isinstance(item,int) == True:
+            idx_pool.append(item)
+        else:
+            print("Must be float or int to perform standard_deviation")
     float_idx_pool = np.append(float_idx_pool, idx_pool)
 
     standard_deviation = statistics.stdev(idx_pool)
