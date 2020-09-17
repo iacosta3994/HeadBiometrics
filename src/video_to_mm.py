@@ -74,43 +74,51 @@ def video_to_pixel_mm(cap_origin_path):
     pixel_mm_mean_list = []
     for mag_stripe_w_h_area_ratio_magname in list_mag_stripe_filtered:
 
-        if 0.08981481481 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.0953:
-            mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:1]
-            # This divides measured H and W witht the avg this will have a H and W square
-            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_1, mag_stripe_w_h))
-            # Removes the variable from a square to an avg unit of h and w
-            pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
-            pixel_mm_mean_list.append(pixel_mm_mean)
+        if 0.08981481481 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.095:
+            mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
+            dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
+            magstripe_diag = np.sqrt(mag_stripe_constant_w_h_2[0]**2 + mag_stripe_constant_w_h_2[1]**2)
+            ppmm = magstripe_diag/dp
+            pixel_mm_mean_list.append(ppmm)
 
-        elif 0.0948444369 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.102666585:
-            mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:1]
-            # This divides measured H and W witht the avg this will have a H and W square
-            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_2, mag_stripe_w_h))
-            # Removes the variable from a square to an avg unit of h and w
-            pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
-            pixel_mm_mean_list.append(pixel_mm_mean)
+        elif 0.095 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.102666585:
+            mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
+            dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
+            magstripe_diag = np.sqrt(mag_stripe_constant_w_h_2[0]**2 + mag_stripe_constant_w_h_2[1]**2)
+            ppmm = magstripe_diag/dp
+            pixel_mm_mean_list.append(ppmm)
 
-        elif 0.12314814814 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.1361:
-            mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:1]
-            # This divides measured H and W witht the avg this will have a H and W square
-            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_3, mag_stripe_w_h))
-            # Removes the variable from a square to an avg unit of h and w
-            pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
-            pixel_mm_mean_list.append(pixel_mm_mean)
+        elif 0.12314814814 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.1385:
+            mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
+            dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
+            magstripe_diag = np.sqrt(mag_stripe_constant_w_h_3[0]**2 + mag_stripe_constant_w_h_3[1]**2)
+            ppmm = magstripe_diag/dp
+            pixel_mm_mean_list.append(ppmm)
 
-        elif 0.14074074074 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.15555555555:
-        elif 0.1362 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.166142857:
-            mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:1]
-            # This divides measured H and W witht the avg this will have a H and W square
-            pixel_mm_w_h = (np.divide(mag_stripe_constant_w_h_4, mag_stripe_w_h))
-            # Removes the variable from a square to an avg unit of h and w
-            pixel_mm_mean = ((pixel_mm_w_h[0] + pixel_mm_w_h[1])/2)
-            pixel_mm_mean_list.append(pixel_mm_mean)
+        elif 0.1386 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.15555555555:
+            mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
+            dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
+            magstripe_diag = np.sqrt(mag_stripe_constant_w_h_4[0]**2 + mag_stripe_constant_w_h_4[1]**2)
+            ppmm = magstripe_diag/dp
+            pixel_mm_mean_list.append(ppmm)
 
         else:
             continue
 
-    return np.mean(pixel_mm_mean_list, axis=0)
+    return print(str(np.mean(pixel_mm_mean_list, axis=0)))
 
 
-video_to_pixel_mm('Video_Tests\B_test_alex.mp4')
+
+
+def file_read(fname):
+
+    with open (fname, "r") as myfile:
+        Lines=myfile.readlines()
+        for line in Lines:
+            print(line)
+            video_to_pixel_mm(line)
+            
+
+
+
+file_read('videotest.txt')
