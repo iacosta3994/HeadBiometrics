@@ -39,13 +39,7 @@ def detect_mag_stripe(img, contours):
             if height <= 15:
                 continue
             aspectRatio = height / width
-            if 0.09288888888 <= aspectRatio <= 0.10266666666:
-                # The pixel height and width of card is returned
-                magstripe_name = str(uuid.uuid4())
-                magstripe_list.append([width, height, aspectRatio, magstripe_name])
-                # Test drawing function
-                #test_draw_magstripe_contour(img, contour, magstripe_name)
-            elif 0.14962357464  <= aspectRatio <= 0.1653734246:
+            if 0.09288888888 <= aspectRatio <= 0.1653734246:
                 # The pixel height and width of card is returned
                 magstripe_name = str(uuid.uuid4())
                 magstripe_list.append([width, height, width * height, aspectRatio, magstripe_name])
