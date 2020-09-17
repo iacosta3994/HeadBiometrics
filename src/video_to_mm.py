@@ -73,7 +73,7 @@ def video_to_pixel_mm(cap_origin_path):
     mag_stripe_w_h = []
     pixel_mm_mean_list = []
     for mag_stripe_w_h_area_ratio_magname in list_mag_stripe_filtered:
-
+        print(list_mag_stripe_filtered)
         if 0.08981481481 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.095:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
             dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
@@ -105,20 +105,24 @@ def video_to_pixel_mm(cap_origin_path):
         else:
             continue
 
-    return print(str(np.mean(pixel_mm_mean_list, axis=0)))
 
+    return print(np.mean(pixel_mm_mean_list, axis=0))
 
-
-
-def file_read(fname):
-
-    with open (fname, "r") as myfile:
-        Lines=myfile.readlines()
-        for line in Lines:
-            print(line)
-            video_to_pixel_mm(line)
-            
-
-
-
-file_read('videotest.txt')
+#video_to_pixel_mm('Video_Tests\A_test_alex.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_alex.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_Audrey.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_Audrey.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_BryanB.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_BryanB.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_BryanL.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_BryanL.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_Fanny.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_Fanny.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_Konstantin.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_Konstantin.mp4')
+video_to_pixel_mm('Video_Tests\A_test_Sanawar.mp4')
+video_to_pixel_mm('Video_Tests\B_test_Sanawar.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_Seb.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_Seb.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_Tom.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_Tom.mp4')
