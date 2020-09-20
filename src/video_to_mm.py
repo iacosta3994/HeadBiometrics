@@ -29,19 +29,10 @@ def video_to_pixel_mm(cap_origin_path):
 
     # Later this list will have all the H and W of the mag stripe
     list_mag_stripe_w_h_area_ratio_magname = []
-    # diffrent magstripes demensions that are manufactured
-    mag_stripe_constant_w_h_1 = [85.725, 7.9375]
-    mag_stripe_constant_w_h_2 = [85.725, 8.382]
-    mag_stripe_constant_w_h_3 = [85.725, 11.1125]
-    mag_stripe_constant_w_h_4 = [85.725, 12.7]
+
 
     while (len(split_frame_array)) >= frame_proccessed:
         for frame in split_frame_array:
-
-            # face detect auto crop input frame output face crop
-
-            #face_crop = face_detect_auto_crop(frame, False)
-            # if np.any(face_crop) != None:
 
             # Canny function for magstripe benchmark
             canny_image = make_canny_magstripe(frame)
@@ -58,27 +49,40 @@ def video_to_pixel_mm(cap_origin_path):
             frame_proccessed += 1
 
             # Once all the frames have been processed continue below
-    '''
+
     with open('magstripe_pixel_w_h_a_n.txt', 'w') as file_txt:
         for w_h_ar_n in list_mag_stripe_w_h_area_ratio_magname:
             file_txt.write(str(w_h_ar_n) + ' ' + '\n')
-    '''
+
 
     area_std_filter_list = std_filter(list_mag_stripe_w_h_area_ratio_magname, 2, 1)
     list_mag_stripe_filtered = remove_nested_with_idx(list_mag_stripe_w_h_area_ratio_magname, area_std_filter_list, 2)
 
-    aspr_std_filter_list = std_filter(list_mag_stripe_filtered, 3)
+    aspr_std_filter_list = std_filter(list_mag_stripe_filtered, 3, 2)
     list_mag_stripe_filtered = remove_nested_with_idx(list_mag_stripe_filtered, aspr_std_filter_list, 3)
+
+    with open('magstripe_pixel_w_h_a_n.txt', 'w') as file_txt:
+        for w_h_ar_n in list_mag_stripe_filtered:
+            file_txt.write(str(w_h_ar_n) + ' ' + '\n')
+
+    # diffrent magstripes demensions that are manufactured
+    mag_stripe_constant_w_h_1 = [84.40, 7.9375]
+    mag_stripe_constant_w_h_2 = [84.40, 8.382]
+    mag_stripe_constant_w_h_3 = [84.40, 12.7]
+    mag_stripe_constant_w_h_4 = [84.40, 13.48]
 
     mag_stripe_w_h = []
     pixel_mm_mean_list = []
+    dp_magdp_list = []
+
     for mag_stripe_w_h_area_ratio_magname in list_mag_stripe_filtered:
-        print(list_mag_stripe_filtered)
+
         if 0.08981481481 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.095:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
             dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
             magstripe_diag = np.sqrt(mag_stripe_constant_w_h_2[0]**2 + mag_stripe_constant_w_h_2[1]**2)
             ppmm = magstripe_diag/dp
+            dp_magdp_list.append([dp, magstripe_diag])
             pixel_mm_mean_list.append(ppmm)
 
         elif 0.095 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.102666585:
@@ -86,6 +90,7 @@ def video_to_pixel_mm(cap_origin_path):
             dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
             magstripe_diag = np.sqrt(mag_stripe_constant_w_h_2[0]**2 + mag_stripe_constant_w_h_2[1]**2)
             ppmm = magstripe_diag/dp
+            dp_magdp_list.append([dp, magstripe_diag])
             pixel_mm_mean_list.append(ppmm)
 
         elif 0.12314814814 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.1385:
@@ -93,18 +98,26 @@ def video_to_pixel_mm(cap_origin_path):
             dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
             magstripe_diag = np.sqrt(mag_stripe_constant_w_h_3[0]**2 + mag_stripe_constant_w_h_3[1]**2)
             ppmm = magstripe_diag/dp
+            dp_magdp_list.append([dp, magstripe_diag])
             pixel_mm_mean_list.append(ppmm)
 
-        elif 0.1386 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.15555555555:
+        elif 0.1386 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.1573:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
             dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
             magstripe_diag = np.sqrt(mag_stripe_constant_w_h_4[0]**2 + mag_stripe_constant_w_h_4[1]**2)
             ppmm = magstripe_diag/dp
+            dp_magdp_list.append([dp, magstripe_diag])
             pixel_mm_mean_list.append(ppmm)
 
         else:
             continue
+    with open('dp_magdp.txt', 'w') as file_txt:
+        for dp_magdp in dp_magdp_list:
+            file_txt.write(str(dp_magdp) + ' ' + '\n')
 
+    with open('magstripe_ppmm_results.txt', 'w') as file_txt:
+        for ppmm in pixel_mm_mean_list:
+            file_txt.write(str(ppmm) + ' ' + '\n')
 
     return print(np.mean(pixel_mm_mean_list, axis=0))
 
@@ -121,7 +134,7 @@ def video_to_pixel_mm(cap_origin_path):
 #video_to_pixel_mm('Video_Tests\A_test_Konstantin.mp4')
 #video_to_pixel_mm('Video_Tests\B_test_Konstantin.mp4')
 video_to_pixel_mm('Video_Tests\A_test_Sanawar.mp4')
-video_to_pixel_mm('Video_Tests\B_test_Sanawar.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_Sanawar.mp4')
 #video_to_pixel_mm('Video_Tests\A_test_Seb.mp4')
 #video_to_pixel_mm('Video_Tests\B_test_Seb.mp4')
 #video_to_pixel_mm('Video_Tests\A_test_Tom.mp4')
