@@ -1,7 +1,5 @@
 import numpy as np
 import cv2
-from matplotlib import pyplot as plt
-
 
 # Function will load frame from file_path and will save canny edge image in same directory with new name
 def make_canny_magstripe(img):
@@ -12,8 +10,8 @@ def make_canny_magstripe(img):
     clahe = cv2.createCLAHE()  # Contrast Limited Adaptive Histogram Equalization
     # Adjsuts contrast in image to allow maggstripe to be darker for images with high gamma
     clahe_img = clahe.apply(blurred_img)
-    # 25 works well Sets a threshold in search for the pixels near the color of black i.e magstripe
-    ret, thresh1 = cv2.threshold(clahe_img, 25, 255, cv2.THRESH_BINARY)
+    # 35 works well Sets a threshold in search for the pixels near the color of black i.e magstripe
+    ret, thresh1 = cv2.threshold(clahe_img, 35, 255, cv2.THRESH_BINARY)
     # Create edges around  image with auto min and max values
     img_canny = auto_canny(thresh1)
     # Sets a kernal 3*3 used for canny img_canny_dilation
@@ -24,9 +22,9 @@ def make_canny_magstripe(img):
     return img_canny_dilation
 
 
-def make_canny(filename, filename_canny):
-    image = cv2.imread(filename, 0)
-    blurred_img = cv2.GaussianBlur(image, (5, 5), 0)
+def make_canny_face(img):
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blurred_img = cv2.GaussianBlur(gray_img, (5, 5), 0)
     img_canny = auto_canny(blurred_img)
     return img_canny
 
