@@ -20,16 +20,12 @@ from src.remove_nested import *
 # Funtion that inputs video mp4, name of scene with location, variable to determine how many frames to splice
 
 
-def video_to_pixel_mm(cap_origin_path):
-
-    # Splits the frame then returns the array of frames
-    split_frame_array = split_frames(cap_origin_path)
+def video_to_pixel_mm(split_frame_array):
 
     frame_proccessed = 0
 
     # Later this list will have all the H and W of the mag stripe
     list_mag_stripe_w_h_area_ratio_magname = []
-
 
     while (len(split_frame_array)) >= frame_proccessed:
         for frame in split_frame_array:
@@ -50,20 +46,13 @@ def video_to_pixel_mm(cap_origin_path):
 
             # Once all the frames have been processed continue below
 
-    with open('magstripe_pixel_w_h_a_n.txt', 'w') as file_txt:
-        for w_h_ar_n in list_mag_stripe_w_h_area_ratio_magname:
-            file_txt.write(str(w_h_ar_n) + ' ' + '\n')
-
-
     area_std_filter_list = std_filter(list_mag_stripe_w_h_area_ratio_magname, 2, 1)
     list_mag_stripe_filtered = remove_nested_with_idx(list_mag_stripe_w_h_area_ratio_magname, area_std_filter_list, 2)
 
     aspr_std_filter_list = std_filter(list_mag_stripe_filtered, 3, 2)
     list_mag_stripe_filtered = remove_nested_with_idx(list_mag_stripe_filtered, aspr_std_filter_list, 3)
 
-    with open('magstripe_pixel_w_h_a_n.txt', 'w') as file_txt:
-        for w_h_ar_n in list_mag_stripe_filtered:
-            file_txt.write(str(w_h_ar_n) + ' ' + '\n')
+
 
     # diffrent magstripes demensions that are manufactured
     mag_stripe_constant_w_h_1 = [84.40, 7.9375]
@@ -111,15 +100,20 @@ def video_to_pixel_mm(cap_origin_path):
 
         else:
             continue
-    with open('dp_magdp.txt', 'w') as file_txt:
-        for dp_magdp in dp_magdp_list:
-            file_txt.write(str(dp_magdp) + ' ' + '\n')
 
-    with open('magstripe_ppmm_results.txt', 'w') as file_txt:
-        for ppmm in pixel_mm_mean_list:
-            file_txt.write(str(ppmm) + ' ' + '\n')
+    '''with open('magstripe_pixel_w_h_a_n.txt', 'w') as file_txt:
+            for w_h_ar_n in list_mag_stripe_filtered:
+                file_txt.write(str(w_h_ar_n) + ' ' + '\n')
 
-    return print(np.mean(pixel_mm_mean_list, axis=0))
+        with open('dp_magdp.txt', 'w') as file_txt:
+            for dp_magdp in dp_magdp_list:
+                file_txt.write(str(dp_magdp) + ' ' + '\n')
+
+        with open('magstripe_ppmm_results.txt', 'w') as file_txt:
+            for ppmm in pixel_mm_mean_list:
+                file_txt.write(str(ppmm) + ' ' + '\n') '''
+
+    return max(pixel_mm_mean_list)
 
 #video_to_pixel_mm('Video_Tests\A_test_alex.mp4')
 #video_to_pixel_mm('Video_Tests\B_test_alex.mp4')
