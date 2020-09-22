@@ -22,7 +22,7 @@ def split_frames(cap_origin_path):
         if retrieved:
             # Adds frame to list
             images.append(frame)
-            # save_image(frame,pos_frame)
+
             # Updates frame count
             pos_frame = cap.get(1)
         else:
@@ -36,9 +36,3 @@ def split_frames(cap_origin_path):
     # Return value contains array of the individual frames
     split_frames_array = np.array(images)
     return split_frames_array
-
-
-def save_image(frame, pos_frame):
-    filename = 'video_name' + str(pos_frame) + '.jpeg'
-    #save_image(filename, frame)
-    cv2.imwrite(filename, frame)
