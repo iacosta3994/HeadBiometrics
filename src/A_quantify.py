@@ -9,5 +9,26 @@ from src.canny_edge_detection_cv2 import *
 from src.mag_stripe_search import *
 from src.video_to_mm import *
 
-pixel_mm = video_to_pixel_mm(('Video_Tests\A_test_self.mp4'), ('./data/A_frame') )
+img_array = split_frames(path)
+pixel_mm = video_to_pixel_mm(img_array)
 print(pixel_mm)
+
+
+#video_to_pixel_mm('Video_Tests\A_test_alex.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_alex.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_Audrey.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_Audrey.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_BryanB.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_BryanB.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_BryanL.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_BryanL.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_Fanny.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_Fanny.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_Konstantin.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_Konstantin.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_Sanawar.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_Sanawar.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_Seb.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_Seb.mp4')
+#video_to_pixel_mm('Video_Tests\A_test_Tom.mp4')
+#video_to_pixel_mm('Video_Tests\B_test_Tom.mp4')
