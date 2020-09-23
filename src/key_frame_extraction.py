@@ -20,6 +20,7 @@ def split_frames(cap_origin_path):
         # (Retval, image) | Grabs, decodes, and returns for next frame
         retrieved, frame = cap.read()
         if retrieved:
+
             # Adds frame to list
             images.append(frame)
 
@@ -35,4 +36,5 @@ def split_frames(cap_origin_path):
 
     # Return value contains array of the individual frames
     split_frames_array = np.array(images)
+
     return split_frames_array
