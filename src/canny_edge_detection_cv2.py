@@ -4,7 +4,7 @@ import cv2
 # Function will load frame from file_path and will save canny edge image in same directory with new name
 def make_canny_magstripe(img):
 
-    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray_img = cv2.cvtColor(np.float32(img), cv2.COLOR_BGR2GRAY)
     # Blurring to reduce artifacts
     blurred_img = cv2.GaussianBlur(gray_img, (7, 7), 0)
     clahe = cv2.createCLAHE()  # Contrast Limited Adaptive Histogram Equalization
