@@ -4,31 +4,50 @@ import uuid
 from src.canny_edge_detection_cv2 import *
 
 
-
+# inputs the video array and outputs the contour of the head.
 def largest_contour(img_array):
-    largest_contour = []
-    for img in img_array:
-        contour, img_canny = head_contour(img)
-        area = cv2.contourArea(contour)
-        if not largest_contour:
-            largest_contour.append([contour, area, img])
-            continue
-        if area > largest_contour[0][1]:
-            largest_contour.pop(0)
-            largest_contour.append([contour, area, img])
+    #list contains the collection of contours that have suspected head contour
+    head_contour_list = []
 
-            cv2.drawContours(img_canny, contour, -1, (0, 255, 0), 3)
+    #itterating through each image in img array
+    for img in img_array:
+        #runs head contour that gets the contour from the img
+        contour, img_canny = head_contour(img)
+
+        #asses the contour using its area
+        area = cv2.contourArea(contour)
+
+
+
+        #if the list is empty asign the first one
+        if not head_contour_list:
+            head_contour_list.append([contour, area, img])
+            continue
+        #if the area of the img is larger than the past frames replace it
+        if area > head_contour_list[0][1]:
+            head_contour_list.pop(0)
+            head_contour_list.append([contour, area, img])
+
+            #saving function to see the contour it outputs
             path = 'E:/test'
             contour_name = str(uuid.uuid4())
-            cv2.imwrite(os.path.join(path , contour_name + '.jpg'), img_canny)
+            cv2.drawContours(img, contour, -1, (0, 255, 0), 3)
+            cv2.drawContours(img_canny, contour, -1, (0, 255, 0), 3)
+            cv2.imwrite(os.path.join(path , contour_name + '.jpg'), img)
+            cv2.imwrite(os.path.join(path , contour_name + 'canny.jpg'), img_canny)
         else:
             continue
 
 
-    return largest_contour
+    return head_contour_list
 
+#outputs the contour of the head
 def head_contour(img):
-    img_canny = make_canny_face(img)
+    img_canny = auto_canny(img)
+    #uses sobel edge setector to generate outlines
+    img_canny = make_sobel_face(img_canny)
+
+
 
     contour = cv2.findContours(img_canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contour = get_contour(contour)
