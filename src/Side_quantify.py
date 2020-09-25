@@ -14,6 +14,6 @@ path = 'Video_Tests\A_test_Sanawar.mp4'
 img_array = split_frames(path)
 pixel_mm = video_to_pixel_mm(img_array)
 largest_contour = largest_contour(img_array)
-contour, area, img = largest_contour[0][0], largest_contour[0][1], largest_contour[0][2]
+contour, area, img = largest_contour[0]
 
 print(pixel_mm)
