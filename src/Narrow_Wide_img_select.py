@@ -29,7 +29,7 @@ def narrowest_img (img_array):     # Inputs frame-filename to scan for the narro
                     if dist == None:
                         dist = img_dist
                     #when larger distance detected updates return img
-                    elif img_dist >= dist:
+                    elif img_dist > dist:
                         dist = img_dist
                         ret_img = img
                     #if the dist is not the largest or none continue to next img
