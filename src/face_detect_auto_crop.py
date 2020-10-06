@@ -55,12 +55,41 @@ def crop_above_eyes(img):
     (rex, rey, rew, reh) = right_eye
     (nosex, nosey, nosew, noseh) = nose
 
+    width, height = img.shape[:2]
+
     if nosex > lex and nosex > rex:
-        crop left
-        max(lex,rex)
+        if ley > nosey > rey:
+            above_eyes = ((lex + rex) / 2) - int(leh + reh / 4)
+            beginX = 0
+            endX = above_eyes
+            beginY = 0
+            endY = height
+            top_img = img[beginX:endX, beginY:endY]
+            return top_img
     if lex < nosex < rex:
-        crop above
-        max (ley, rey)
+        if nosey > lex and nosey > rex:
+            above_eyes = ((ley + rey) / 2) - int(leh + reh / 4)
+            beginX = 0
+            endX = width
+            beginY = 0
+            endY = above_eyes
+            top_img = img[beginX:endX, beginY:endY]
+            return top_img
     if nosex < lex and nosex > rex:
-        crop right 
-        max(lex< rex)
+        if rey > nosey > ley:
+            above_eyes = ((lex + rex) / 2) + int(leh + reh / 4)
+            beginX = above_eyes
+            endX = width
+            beginY = 0
+            endY = height
+            top_img = img[beginX:endX, beginY:endY]
+            return top_img
+    if lex < nosex < rex:
+        if nosey < ley and nosey < rey:
+            above_eyes = ((ley + rey)/2) + int(leh + reh / 4)
+            beginX = 0
+            endX = width
+            beginY = above_eyes
+            endY = height
+            top_img = img[beginX:endX, beginY:endY]
+            return top_img
