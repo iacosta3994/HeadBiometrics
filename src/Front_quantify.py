@@ -10,6 +10,8 @@ from src.mag_stripe_search import *
 from src.video_to_mm import *
 from src.face_contour_width import *
 from src.narrow_wide_img_select import narrowest_img
+from src.path_finder import *
+
 
 path = 'Video_Tests\A_test_BryanL.mp4'
 img_array = split_frames(path)
@@ -24,7 +26,7 @@ contour_end = contour_bottom_right(front_contour)
 
 contour_mask = make_mask_from_contour(front_contour)
 
-astar(contour_mask, contour_start, contour_end)
+astar(contour_mask, contour_start, contour_end, allow_diagonal_movement=True)
 
 print(pixel_mm)
 
