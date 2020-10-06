@@ -5,8 +5,11 @@ import numpy as np
 
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+left_eye_cascade = cv2.CascadeClassifier('haarcascade_lefteye_2splits.xml')
 
+right_eye_cascade = cv2.CascadeClassifier('haarcascade_righteye_2splits.xml')
+
+nose_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_nose.xml')
 
 def face_detect_auto_crop(img, save_result):
 
@@ -38,3 +41,26 @@ def face_detect_auto_crop(img, save_result):
                 cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
             cv2.imwrite('img.png', final_img)
         return final_img
+
+def crop_above_eyes(img):
+    if img is None:
+        print("Can not use image")
+        return None
+
+    left_eye = left_eye_cascade.detectMultiScale(img, 1.3, 5)
+    right_eye = right_eye_cascade.detectMultiScale(img, 1.3, 5)
+    nose = nose_cascade.detectMultiScale(img, 1.3, 5)
+
+    (lex, ley, lew, leh) = left_eye
+    (rex, rey, rew, reh) = right_eye
+    (nosex, nosey, nosew, noseh) = nose
+
+    if nosex > lex and nosex > rex:
+        crop left
+        max(lex,rex)
+    if lex < nosex < rex:
+        crop above
+        max (ley, rey)
+    if nosex < lex and nosex > rex:
+        crop right 
+        max(lex< rex)
