@@ -2,15 +2,15 @@ import cv2
 import numpy as np
 from src.face_contour_width import *
 
-
+left_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_lefteye_2splits.xml')
+right_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_righteye_2splits.xml')
 
 def narrowest_img (img_array):     # Inputs frame-filename to scan for the narrowest head img
     #establishes both left and right eye
-    left_eye_cascade = cv2.CascadeClassifier('haarcascade_lefteye_2splits.xml')
-    right_eye_cascade = cv2.CascadeClassifier('haarcascade_righteye_2splits.xml')
+
 
     #establishing var outside loop
-    dist == None
+    dist = None
     ret_img = None
 
     #itteration for each img
