@@ -3,13 +3,10 @@ import sys
 import os
 import numpy as np
 
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-
-left_eye_cascade = cv2.CascadeClassifier('haarcascade_lefteye_2splits.xml')
-
-right_eye_cascade = cv2.CascadeClassifier('haarcascade_righteye_2splits.xml')
-
-nose_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_nose.xml')
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades +'haarcascade_frontalface_default.xml')
+left_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades +'haarcascade_lefteye_2splits.xml')
+right_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades +'haarcascade_righteye_2splits.xml')
+nose_cascade = cv2.CascadeClassifier(cv2.data.haarcascades +'haarcascade_nose.xml')
 
 def face_detect_auto_crop(img, save_result):
 
@@ -99,3 +96,7 @@ def crop_above_eyes(img):
             endY = height
             top_img = img[beginX:endX, beginY:endY]
             return top_img
+
+img = cv2.imread('ef2e0199-6dd2-47c9-a3cc-d89f22b831d1.jpg')
+test = crop_above_eyes(img)
+cv2.imshow('test', img)
