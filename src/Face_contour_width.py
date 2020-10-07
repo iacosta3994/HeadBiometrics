@@ -7,11 +7,19 @@ from src.canny_edge_detection_cv2 import *
 
 
 def img_head_contour(img):
+    if img is None:
+        print("Can't open image file")
+        return None
+        
     contour, img_canny = head_contour(img)
     return contour, img_canny
 
 # outputs the contour of the head
 def head_contour(img):
+    if img is None:
+        print("Can't open image file")
+        return None
+
     img = auto_canny_face(img, sigma=.22)
 
     img = make_sobel_face(img)
