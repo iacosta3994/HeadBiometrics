@@ -16,12 +16,12 @@ from src.face_detect_auto_crop import crop_above_eyes
 
 path = 'Video_Tests\A_test_self.mp4'
 img_array = split_frames(path)
-pixel_mm = video_to_pixel_mm(img_array)
+pixel_mm, mag_xy = video_to_pixel_mm(img_array)
 narrow_head_img = narrowest_img(img_array)
-above_eyes = crop_above_eyes(narrow_head_img)
+above_eyes = crop_above_eyes(narrow_head_img,mag_xy)
 if above_eyes is None:
     print("Can't open above eyes file")
-    
+
 front_contour = img_head_contour(above_eyes)
 
 

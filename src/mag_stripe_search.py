@@ -14,9 +14,9 @@ def get_magstripe_demensions(img):
     # Generates a hierarchy of contours
     contours, hierarchy = cv2.findContours(img_fc, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # Detects contours with 4 sides and an aspec ratio relating to magstripe
-    mag_stripe_w_h_ar_mn = detect_mag_stripe(img, contours)
+    mag_stripe_w_h_ar_mn_xy = detect_mag_stripe(img, contours)
     # Returns the pixel height and width with angle in mind
-    return mag_stripe_w_h_ar_mn
+    return mag_stripe_w_h_ar_mn_xy
 
 
 # Narrows down the contours in search for the one that best fits

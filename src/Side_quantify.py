@@ -13,7 +13,7 @@ from src.path_finder import *
 
 path = 'Video_Tests\B_test_BryanL.mp4'
 img_array = split_frames(path)
-pixel_mm = video_to_pixel_mm(img_array)
+pixel_mm, mag_xy = video_to_pixel_mm(img_array)
 narrow_head_img = narrowest_img(img_array)
 front_contour = img_head_contour(narrow_head_img)
 

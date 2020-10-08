@@ -6,7 +6,7 @@ import numpy as np
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades +'haarcascade_frontalface_default.xml')
 left_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades +'haarcascade_lefteye_2splits.xml')
 right_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades +'haarcascade_righteye_2splits.xml')
-nose_cascade = cv2.CascadeClassifier(cv2.data.haarcascades +'haarcascade_nose.xml')
+
 
 def face_detect_auto_crop(img, save_result):
 
@@ -39,26 +39,26 @@ def face_detect_auto_crop(img, save_result):
             cv2.imwrite('img.png', final_img)
         return final_img
 
-def crop_above_eyes(img):
+def crop_above_eyes(img, mag_xy):
     if img is None:
         print("Can not use image")
         return None
     #cascades for 3 faicial points
     left_eye = left_eye_cascade.detectMultiScale(img, 1.3, 5)
     right_eye = right_eye_cascade.detectMultiScale(img, 1.3, 5)
-    nose = nose_cascade.detectMultiScale(img, 1.3, 5)
+
 
     # X Y W H cordinates for each detected feature
     (lex, ley, lew, leh) = left_eye
     (rex, rey, rew, reh) = right_eye
-    (nosex, nosey, nosew, noseh) = nose
+    (mag_x, mag_y) = mag_xy
 
     #adapting H W for each image
     height, width = img.shape[:2]
 
     # nose position is to the right than both eyes
-    if nosex > lex and nosex > rex:
-        if ley > nosey > rey:
+    if mag_x > lex and mag_x > rex:
+        if ley > mag_y > rey:
             above_eyes = ((lex + rex) / 2) - int(leh + reh / 4)
             beginX = 0
             endX = above_eyes
@@ -67,8 +67,8 @@ def crop_above_eyes(img):
             top_img = img[beginX:endX, beginY:endY]
             return top_img
     # Nose is between both eyes and is below it
-    if lex < nosex < rex:
-        if nosey > lex and nosey > rex:
+    if lex < mag_x < rex:
+        if mag_y > lex and mag_y > rex:
             above_eyes = ((ley + rey) / 2) - int(leh + reh / 4)
             beginX = 0
             endX = width
@@ -77,8 +77,8 @@ def crop_above_eyes(img):
             top_img = img[beginX:endX, beginY:endY]
             return top_img
     # Nose position is on the left side of both eyes
-    if nosex < lex and nosex > rex:
-        if rey > nosey > ley:
+    if mag_x < lex and mag_x > rex:
+        if rey > mag_y > ley:
             above_eyes = ((lex + rex) / 2) + int(leh + reh / 4)
             beginX = above_eyes
             endX = width
@@ -87,8 +87,8 @@ def crop_above_eyes(img):
             top_img = img[beginX:endX, beginY:endY]
             return top_img
     # Nose is between both eyes but is above it
-    if lex < nosex < rex:
-        if nosey < ley and nosey < rey:
+    if lex < mag_x < rex:
+        if mag_y < ley and mag_y < rey:
             above_eyes = ((ley + rey)/2) + int(leh + reh / 4)
             beginX = 0
             endX = width
@@ -96,7 +96,3 @@ def crop_above_eyes(img):
             endY = height
             top_img = img[beginX:endX, beginY:endY]
             return top_img
-
-img = cv2.imread('ef2e0199-6dd2-47c9-a3cc-d89f22b831d1.jpg')
-test = crop_above_eyes(img)
-cv2.imshow('test', img)
