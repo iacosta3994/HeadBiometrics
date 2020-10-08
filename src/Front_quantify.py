@@ -38,5 +38,5 @@ print(pixel_mm)
 
 contour_name = str(uuid.uuid4())
 path = 'E:/test/'
-cv2.drawContours(above_eyes, contour, -1, (0, 255, 0), 3)
+cv2.drawContours(above_eyes, front_contour, -1, (0, 255, 0), 3)
 cv2.imwrite(os.path.join(path ,  'result.jpg'), above_eyes)
