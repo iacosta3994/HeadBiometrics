@@ -41,7 +41,7 @@ def face_detect_auto_crop(img, save_result):
 
 def crop_above_eyes(img, mag_xy):
     if img is None:
-        print("Can not use image")
+        print("Image not loaded to crop")
         return None
     #cascades for 3 faicial points
     left_eye = left_eye_cascade.detectMultiScale(img, 1.3, 5)
@@ -67,7 +67,7 @@ def crop_above_eyes(img, mag_xy):
             top_img = img[beginX:endX, beginY:endY]
             return top_img
     # Nose is between both eyes and is below it
-    if lex < mag_x < rex:
+    elif lex < mag_x < rex:
         if mag_y > lex and mag_y > rex:
             above_eyes = ((ley + rey) / 2) - int(leh + reh / 4)
             beginX = 0
@@ -77,7 +77,7 @@ def crop_above_eyes(img, mag_xy):
             top_img = img[beginX:endX, beginY:endY]
             return top_img
     # Nose position is on the left side of both eyes
-    if mag_x < lex and mag_x > rex:
+    elif mag_x < lex and mag_x > rex:
         if rey > mag_y > ley:
             above_eyes = ((lex + rex) / 2) + int(leh + reh / 4)
             beginX = above_eyes
@@ -87,7 +87,7 @@ def crop_above_eyes(img, mag_xy):
             top_img = img[beginX:endX, beginY:endY]
             return top_img
     # Nose is between both eyes but is above it
-    if lex < mag_x < rex:
+    elif lex < mag_x < rex:
         if mag_y < ley and mag_y < rey:
             above_eyes = ((ley + rey)/2) + int(leh + reh / 4)
             beginX = 0
@@ -96,3 +96,6 @@ def crop_above_eyes(img, mag_xy):
             endY = height
             top_img = img[beginX:endX, beginY:endY]
             return top_img
+    else:
+        print("could not crop image")
+        return img
