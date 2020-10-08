@@ -9,7 +9,7 @@ import uuid
 
 
 def get_magstripe_demensions(img):
-    #copies image
+    # copies image
     img_fc = img.copy()
     # Generates a hierarchy of contours
     contours, hierarchy = cv2.findContours(img_fc, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -42,7 +42,8 @@ def detect_mag_stripe(img, contours):
             if 0.09288888888 <= aspectRatio <= 0.1653734246:
                 # The pixel height and width of card is returned
                 magstripe_name = str(uuid.uuid4())
-                magstripe_list.append([width, height, width * height, aspectRatio, magstripe_name])
+                magstripe_list.append([width, height, width * height,
+                                       aspectRatio, magstripe_name, (x, y)])
                 # Test drawing function
                 #test_draw_magstripe_contour(img, contour, magstripe_name)
     return magstripe_list
