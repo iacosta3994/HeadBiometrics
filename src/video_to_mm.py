@@ -119,4 +119,4 @@ def video_to_pixel_mm(split_frame_array):
             for ppmm in pixel_mm_mean_list:
                 file_txt.write(str(ppmm) + ' ' + '\n') '''
 
-    return (max(pixel_mm_mean_list), max(xy_cordinates))
+    return max(pixel_mm_mean_list), max(xy_cordinates)
