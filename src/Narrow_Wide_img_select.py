@@ -6,7 +6,7 @@ left_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_le
 right_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_righteye_2splits.xml')
 
 def narrowest_img (img_array):     # Inputs frame-filename to scan for the narrowest head img
-    #establishes both left and right eye
+
 
 
     #establishing var outside loop
@@ -18,24 +18,26 @@ def narrowest_img (img_array):     # Inputs frame-filename to scan for the narro
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         left_eye = left_eye_cascade.detectMultiScale(gray, 1.3, 5)
         right_eye = right_eye_cascade.detectMultiScale(gray, 1.3, 5)
+        print(left_eye, right_eye)
         #if both eyes found
-        if left_eye and right_eye:
+        if len(left_eye) > 0 and len(right_eye) > 0:
             #itterating through both combos of left and right
-            for (lex, ley, lew, leh) in left_eye:
-                for (rex, rey, rew, reh) in right_eye:
-                    #distance between points of detected eyes
-                    img_dist = np.sqrt((rex-lex)**2 + (rey -ley)**2)
-                    #if dist not established first img creates value
-                    if dist == None:
-                        dist = img_dist
-                    #when larger distance detected updates return img
-                    elif img_dist > dist:
-                        dist = img_dist
-                        ret_img = img
-                    #if the dist is not the largest or none continue to next img
-                    else:
-                        continue
-        return ret_img
+            lex, ley, lew, leh = left_eye
+            rex, rey, rew, reh = right_eye
+            #distance between points of detected eyes
+            img_dist = np.sqrt((rex-lex)**2 + (rey -ley)**2)
+            #if dist not established first img creates value
+            if dist == None:
+                dist = img_dist
+            #when larger distance detected updates return img
+            elif img_dist > dist:
+                dist = img_dist
+                ret_img = img
+            #if the dist is not the largest or none continue to next img
+            else:
+                continue
+
+    return ret_img
 
 def widest_img(img_array):
     head_contour_list = []
