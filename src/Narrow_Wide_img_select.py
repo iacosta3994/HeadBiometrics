@@ -15,27 +15,27 @@ def narrowest_img (img_array):     # Inputs frame-filename to scan for the narro
 
     #itteration for each img
     for img in img_array:
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        left_eye = left_eye_cascade.detectMultiScale(gray, 1.3, 5)
-        right_eye = right_eye_cascade.detectMultiScale(gray, 1.3, 5)
-        print(left_eye, right_eye)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        left_eye = left_eye_cascade.detectMultiScale(img, 1.3, 3)
+        right_eye = right_eye_cascade.detectMultiScale(img, 1.3, 3)
+        #print("left eye: ", left_eye,"right eye: ", right_eye)
         #if both eyes found
         if len(left_eye) > 0 and len(right_eye) > 0:
             #itterating through both combos of left and right
-            lex, ley, lew, leh = left_eye
-            rex, rey, rew, reh = right_eye
-            #distance between points of detected eyes
-            img_dist = np.sqrt((rex-lex)**2 + (rey -ley)**2)
-            #if dist not established first img creates value
-            if dist == None:
-                dist = img_dist
-            #when larger distance detected updates return img
-            elif img_dist > dist:
-                dist = img_dist
-                ret_img = img
-            #if the dist is not the largest or none continue to next img
-            else:
-                continue
+            for (lex, ley, lew, leh) in left_eye:
+                for (rex, rey, rew, reh) in right_eye:
+                    #distance between points of detected eyes
+                    img_dist = np.sqrt((rex-lex)**2 + (rey -ley)**2)
+                    #if dist not established first img creates value
+                    if dist == None:
+                        dist = img_dist
+                    #when larger distance detected updates return img
+                    if img_dist > dist:
+                        dist = img_dist
+                        ret_img = img
+                    #if the dist is not the largest or none continue to next img
+                    else:
+                        continue
 
     return ret_img
 
