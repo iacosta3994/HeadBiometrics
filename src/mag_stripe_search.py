@@ -43,7 +43,7 @@ def detect_mag_stripe(img, contours):
                 # The pixel height and width of card is returned
                 magstripe_name = str(uuid.uuid4())
                 magstripe_list.append([width, height, width * height,
-                                       aspectRatio, magstripe_name, (x, y)])
+                                       aspectRatio, magstripe_name, [x, y]])
                 # Test drawing function
                 #test_draw_magstripe_contour(img, contour, magstripe_name)
     return magstripe_list
