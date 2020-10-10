@@ -47,7 +47,7 @@ def video_to_pixel_mm(split_frame_array):
 
             # Once all the frames have been processed continue below
 
-    area_std_filter_list = std_filter(list_mag_stripe_w_h_area_ratio_magname, 2, 1)
+    area_std_filter_list = std_filter(list_mag_stripe_w_h_area_ratio_magname, 2, .5)
     list_mag_stripe_filtered = remove_nested_with_idx(list_mag_stripe_w_h_area_ratio_magname, area_std_filter_list, 2)
 
     aspr_std_filter_list = std_filter(list_mag_stripe_filtered, 3, 2)
@@ -120,10 +120,10 @@ def video_to_pixel_mm(split_frame_array):
             for ppmm in pixel_mm_mean_list:
                 file_txt.write(str(ppmm) + ' ' + '\n') '''
 
-    x_std_filter = std_filter(xy_cordinates, 0)
+    x_std_filter = std_filter(xy_cordinates, 0,  deviations_count = .3)
     xy_cordinates = remove_nested_with_idx(xy_cordinates, x_std_filter,0 )
 
-    y_std_filter = std_filter(xy_cordinates,1)
+    y_std_filter = std_filter(xy_cordinates,1 ,   deviations_count = .3)
     xy_cordinates = remove_nested_with_idx(xy_cordinates,y_std_filter,1)
 
     pixel_mm_filter = std_filter(pixel_mm_mean_list,0, deviations_count=.5)
