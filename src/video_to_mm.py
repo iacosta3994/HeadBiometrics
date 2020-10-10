@@ -14,8 +14,9 @@ from src.canny_edge_detection_cv2 import *
 from src.mag_stripe_search import *
 from src.face_detect_auto_crop import *
 from src.print_img_demensions import *
-from src.standard_dev_filter import *
+from src.standard_dev_filter import std_filter
 from src.remove_nested import *
+
 
 # Funtion that inputs video mp4, name of scene with location, variable to determine how many frames to splice
 
@@ -75,7 +76,7 @@ def video_to_pixel_mm(split_frame_array):
             ppmm = magstripe_diag/dp
             #dp_magdp_list.append([dp, magstripe_diag])
             xy_cordinates.append(mag_stripe_w_h_area_ratio_magname[5])
-            pixel_mm_mean_list.append(ppmm)
+            pixel_mm_mean_list.append([ppmm])
 
         elif 0.095 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.102666585:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
@@ -84,7 +85,7 @@ def video_to_pixel_mm(split_frame_array):
             ppmm = magstripe_diag/dp
             #dp_magdp_list.append([dp, magstripe_diag])
             xy_cordinates.append(mag_stripe_w_h_area_ratio_magname[5])
-            pixel_mm_mean_list.append(ppmm)
+            pixel_mm_mean_list.append([ppmm])
 
         elif 0.12314814814 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.1385:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
@@ -93,7 +94,7 @@ def video_to_pixel_mm(split_frame_array):
             ppmm = magstripe_diag/dp
             #dp_magdp_list.append([dp, magstripe_diag])
             xy_cordinates.append(mag_stripe_w_h_area_ratio_magname[5])
-            pixel_mm_mean_list.append(ppmm)
+            pixel_mm_mean_list.append([ppmm])
 
         elif 0.1386 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.1573:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
@@ -102,7 +103,7 @@ def video_to_pixel_mm(split_frame_array):
             ppmm = magstripe_diag/dp
             #dp_magdp_list.append([dp, magstripe_diag])
             xy_cordinates.append(mag_stripe_w_h_area_ratio_magname[5])
-            pixel_mm_mean_list.append(ppmm)
+            pixel_mm_mean_list.append([ppmm])
 
         else:
             continue
@@ -119,4 +120,13 @@ def video_to_pixel_mm(split_frame_array):
             for ppmm in pixel_mm_mean_list:
                 file_txt.write(str(ppmm) + ' ' + '\n') '''
 
-    return max(pixel_mm_mean_list), max(xy_cordinates)
+    x_std_filter = std_filter(xy_cordinates, 0)
+    xy_cordinates = remove_nested_with_idx(xy_cordinates, x_std_filter,0 )
+
+    y_std_filter = std_filter(xy_cordinates,1)
+    xy_cordinates = remove_nested_with_idx(xy_cordinates,y_std_filter,1)
+
+    pixel_mm_filter = std_filter(pixel_mm_mean_list,0, deviations_count=.5)
+    pixel_mm_filtered = remove_nested_with_idx(pixel_mm_mean_list, pixel_mm_filter,0)
+
+    return max(pixel_mm_filtered), max(xy_cordinates)
