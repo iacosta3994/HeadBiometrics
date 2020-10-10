@@ -16,8 +16,8 @@ def narrowest_img (img_array):     # Inputs frame-filename to scan for the narro
     #itteration for each img
     for img in img_array:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        left_eye = left_eye_cascade.detectMultiScale(img, 1.3, 3)
-        right_eye = right_eye_cascade.detectMultiScale(img, 1.3, 3)
+        left_eye = left_eye_cascade.detectMultiScale(img, 1.05, 5)
+        right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 5)
         #print("left eye: ", left_eye,"right eye: ", right_eye)
         #if both eyes found
         if len(left_eye) > 0 and len(right_eye) > 0:
