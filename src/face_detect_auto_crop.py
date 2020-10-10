@@ -44,14 +44,13 @@ def crop_above_eyes(img, mag_xy):
         print("Image not loaded to crop")
         return None
     #cascades for 3 faicial points
-    left_eye = left_eye_cascade.detectMultiScale(img, 1.3, 3)
-    right_eye = right_eye_cascade.detectMultiScale(img, 1.3, 3)
+    left_eye = left_eye_cascade.detectMultiScale(img, 1.05, 5)
+    right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 5)
 
 
     # X Y W H cordinates for each detected feature
     (mag_x, mag_y) = mag_xy
     for (lex, ley, lew, leh) in left_eye:
-        print(lex, ley, lew, leh)
         for (rex, rey, rew, reh) in right_eye:
 
 
@@ -100,4 +99,5 @@ def crop_above_eyes(img, mag_xy):
                     return top_img
             else:
                 print("could not crop image")
+                print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y) )
                 return img
