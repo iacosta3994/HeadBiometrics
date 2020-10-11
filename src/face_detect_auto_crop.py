@@ -46,58 +46,227 @@ def crop_above_eyes(img, mag_xy):
     #cascades for 3 faicial points
     left_eye = left_eye_cascade.detectMultiScale(img, 1.05, 5)
     right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 5)
+    img_candidates = []
+    if len(left_eye) > 0 and len(right_eye) > 0:
+        # X Y W H cordinates for each detected feature
+        (mag_x, mag_y) = mag_xy
+        for (lex, ley, lew, leh) in left_eye:
+            for (rex, rey, rew, reh) in right_eye:
 
 
-    # X Y W H cordinates for each detected feature
-    (mag_x, mag_y) = mag_xy
-    for (lex, ley, lew, leh) in left_eye:
-        for (rex, rey, rew, reh) in right_eye:
+                #adapting H W for each image
+                height, width = img.shape[:2]
+
+                # nose position is to the right than both eyes
+                if mag_x > lex and mag_x > rex:
+                    if ley > mag_y > rey:
+                        above_eyes = ((lex + rex) / 2) - int(leh + reh / 4)
+                        beginX = 0
+                        endX = above_eyes
+                        beginY = 0
+                        endY = height
+                        top_img = img[beginX:endX, beginY:endY]
+                        img_candidates.append(top_img)
+                # Nose is between both eyes and is below it
+                elif lex < mag_x < rex:
+                    if mag_y > lex and mag_y > rex:
+                        above_eyes = ((ley + rey) / 2) - int(leh + reh / 4)
+                        beginX = 0
+                        endX = width
+                        beginY = 0
+                        endY = above_eyes
+                        top_img = img[beginX:endX, beginY:endY]
+                        img_candidates.append(top_img)
+                # Nose position is on the left side of both eyes
+                elif mag_x < lex and mag_x > rex:
+                    if rey > mag_y > ley:
+                        above_eyes = ((lex + rex) / 2) + int(leh + reh / 4)
+                        beginX = above_eyes
+                        endX = width
+                        beginY = 0
+                        endY = height
+                        top_img = img[beginX:endX, beginY:endY]
+                        img_candidates.append(top_img)
+                # Nose is between both eyes but is above it
+                elif lex < mag_x < rex:
+                    if mag_y < ley and mag_y < rey:
+                        above_eyes = ((ley + rey)/2) + int(leh + reh / 4)
+                        beginX = 0
+                        endX = width
+                        beginY = above_eyes
+                        endY = height
+                        top_img = img[beginX:endX, beginY:endY]
+                        img_candidates.append(top_img)
+                else:
+                    print("could not crop image L5")
+                    print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y) )
+                    return img
+    elif len(left_eye) == 0 or  len(right_eye) == 0:
+        left_eye =  left_eye_cascade.detectMultiScale(img, 1.05, 4)
+        right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 4)
+        if len(left_eye) > 0 and len(right_eye) > 0:
+            (mag_x, mag_y) = mag_xy
+            for (lex, ley, lew, leh) in left_eye:
+                for (rex, rey, rew, reh) in right_eye:
 
 
-            #adapting H W for each image
-            height, width = img.shape[:2]
+                    #adapting H W for each image
+                    height, width = img.shape[:2]
 
-            # nose position is to the right than both eyes
-            if mag_x > lex and mag_x > rex:
-                if ley > mag_y > rey:
-                    above_eyes = ((lex + rex) / 2) - int(leh + reh / 4)
-                    beginX = 0
-                    endX = above_eyes
-                    beginY = 0
-                    endY = height
-                    top_img = img[beginX:endX, beginY:endY]
-                    return top_img
-            # Nose is between both eyes and is below it
-            elif lex < mag_x < rex:
-                if mag_y > lex and mag_y > rex:
-                    above_eyes = ((ley + rey) / 2) - int(leh + reh / 4)
-                    beginX = 0
-                    endX = width
-                    beginY = 0
-                    endY = above_eyes
-                    top_img = img[beginX:endX, beginY:endY]
-                    return top_img
-            # Nose position is on the left side of both eyes
-            elif mag_x < lex and mag_x > rex:
-                if rey > mag_y > ley:
-                    above_eyes = ((lex + rex) / 2) + int(leh + reh / 4)
-                    beginX = above_eyes
-                    endX = width
-                    beginY = 0
-                    endY = height
-                    top_img = img[beginX:endX, beginY:endY]
-                    return top_img
-            # Nose is between both eyes but is above it
-            elif lex < mag_x < rex:
-                if mag_y < ley and mag_y < rey:
-                    above_eyes = ((ley + rey)/2) + int(leh + reh / 4)
-                    beginX = 0
-                    endX = width
-                    beginY = above_eyes
-                    endY = height
-                    top_img = img[beginX:endX, beginY:endY]
-                    return top_img
-            else:
-                print("could not crop image")
-                print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y) )
-                return img
+                    # nose position is to the right than both eyes
+                    if mag_x > lex and mag_x > rex:
+                        if ley > mag_y > rey:
+                            above_eyes = ((lex + rex) / 2) - int(leh + reh / 4)
+                            beginX = 0
+                            endX = above_eyes
+                            beginY = 0
+                            endY = height
+                            top_img = img[beginX:endX, beginY:endY]
+                            img_candidates.append(top_img)
+                    # Nose is between both eyes and is below it
+                    elif lex < mag_x < rex:
+                        if mag_y > lex and mag_y > rex:
+                            above_eyes = ((ley + rey) / 2) - int(leh + reh / 4)
+                            beginX = 0
+                            endX = width
+                            beginY = 0
+                            endY = above_eyes
+                            top_img = img[beginX:endX, beginY:endY]
+                            img_candidates.append(top_img)
+                    # Nose position is on the left side of both eyes
+                    elif mag_x < lex and mag_x > rex:
+                        if rey > mag_y > ley:
+                            above_eyes = ((lex + rex) / 2) + int(leh + reh / 4)
+                            beginX = above_eyes
+                            endX = width
+                            beginY = 0
+                            endY = height
+                            top_img = img[beginX:endX, beginY:endY]
+                            img_candidates.append(top_img)
+                    # Nose is between both eyes but is above it
+                    elif lex < mag_x < rex:
+                        if mag_y < ley and mag_y < rey:
+                            above_eyes = ((ley + rey)/2) + int(leh + reh / 4)
+                            beginX = 0
+                            endX = width
+                            beginY = above_eyes
+                            endY = height
+                            top_img = img[beginX:endX, beginY:endY]
+                            img_candidates.append(top_img)
+                    else:
+                        print("could not crop image L4")
+                        print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y) )
+                        return img
+        elif len(left_eye) == 0 or len(right_eye) == 0:
+            left_eye =  left_eye_cascade.detectMultiScale(img, 1.05, 3)
+            right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 3)
+            if len(left_eye) > 0 and len(right_eye) > 0:
+                (mag_x, mag_y) = mag_xy
+                for (lex, ley, lew, leh) in left_eye:
+                    for (rex, rey, rew, reh) in right_eye:
+
+
+                        #adapting H W for each image
+                        height, width = img.shape[:2]
+
+                        # nose position is to the right than both eyes
+                        if mag_x > lex and mag_x > rex:
+                            if ley > mag_y > rey:
+                                above_eyes = ((lex + rex) / 2) - int(leh + reh / 4)
+                                beginX = 0
+                                endX = above_eyes
+                                beginY = 0
+                                endY = height
+                                top_img = img[beginX:endX, beginY:endY]
+                                img_candidates.append(top_img)
+                        # Nose is between both eyes and is below it
+                        elif lex < mag_x < rex:
+                            if mag_y > lex and mag_y > rex:
+                                above_eyes = ((ley + rey) / 2) - int(leh + reh / 4)
+                                beginX = 0
+                                endX = width
+                                beginY = 0
+                                endY = above_eyes
+                                top_img = img[beginX:endX, beginY:endY]
+                                img_candidates.append(top_img)
+                        # Nose position is on the left side of both eyes
+                        elif mag_x < lex and mag_x > rex:
+                            if rey > mag_y > ley:
+                                above_eyes = ((lex + rex) / 2) + int(leh + reh / 4)
+                                beginX = above_eyes
+                                endX = width
+                                beginY = 0
+                                endY = height
+                                top_img = img[beginX:endX, beginY:endY]
+                                img_candidates.append(top_img)
+                        # Nose is between both eyes but is above it
+                        elif lex < mag_x < rex:
+                            if mag_y < ley and mag_y < rey:
+                                above_eyes = ((ley + rey)/2) + int(leh + reh / 4)
+                                beginX = 0
+                                endX = width
+                                beginY = above_eyes
+                                endY = height
+                                top_img = img[beginX:endX, beginY:endY]
+                                img_candidates.append(top_img)
+                        else:
+                            print("could not crop image L3")
+                            print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y) )
+                            return None
+            elif len(left_eye) == 0 or len(right_eye) == 0:
+                left_eye =  left_eye_cascade.detectMultiScale(img, 1.05, 2)
+                right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 2)
+                if len(left_eye) > 0 and len(right_eye) > 0:
+                    (mag_x, mag_y) = mag_xy
+                    for (lex, ley, lew, leh) in left_eye:
+                        for (rex, rey, rew, reh) in right_eye:
+
+
+                            #adapting H W for each image
+                            height, width = img.shape[:2]
+
+                            # nose position is to the right than both eyes
+                            if mag_x > lex and mag_x > rex:
+                                if ley > mag_y > rey:
+                                    above_eyes = ((lex + rex) / 2) - int(leh + reh / 4)
+                                    beginX = 0
+                                    endX = above_eyes
+                                    beginY = 0
+                                    endY = height
+                                    top_img = img[beginX:endX, beginY:endY]
+                                    img_candidates.append(top_img)
+                            # Nose is between both eyes and is below it
+                            elif lex < mag_x < rex:
+                                if mag_y > lex and mag_y > rex:
+                                    above_eyes = ((ley + rey) / 2) - int(leh + reh / 4)
+                                    beginX = 0
+                                    endX = width
+                                    beginY = 0
+                                    endY = above_eyes
+                                    top_img = img[beginX:endX, beginY:endY]
+                                    img_candidates.append(top_img)
+                            # Nose position is on the left side of both eyes
+                            elif mag_x < lex and mag_x > rex:
+                                if rey > mag_y > ley:
+                                    above_eyes = ((lex + rex) / 2) + int(leh + reh / 4)
+                                    beginX = above_eyes
+                                    endX = width
+                                    beginY = 0
+                                    endY = height
+                                    top_img = img[beginX:endX, beginY:endY]
+                                    img_candidates.append(top_img)
+                            # Nose is between both eyes but is above it
+                            elif lex < mag_x < rex:
+                                if mag_y < ley and mag_y < rey:
+                                    above_eyes = ((ley + rey)/2) + int(leh + reh / 4)
+                                    beginX = 0
+                                    endX = width
+                                    beginY = above_eyes
+                                    endY = height
+                                    top_img = img[beginX:endX, beginY:endY]
+                                    img_candidates.append(top_img)
+                            else:
+                                print("could not crop image L2")
+                                print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y) )
+                                return None
+    return img_candidates
