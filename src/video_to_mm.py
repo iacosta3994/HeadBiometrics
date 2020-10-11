@@ -1,8 +1,4 @@
-'''
-This will be in charge of preparing B_photos (the side of the head). Then it will need to determine the front_to_back, length, circumference and ear_to_ear in pixels.
-User input will be needed to find front_to_back due to dynamic hairlines in individuals heads.
-then use info from mag_stripe_search to get the conversion from pixel to mm^2 giving front_to_back, length, circumference and ear_to_ear in mm
-'''
+
 import os
 import sys
 import numpy as np
@@ -48,12 +44,12 @@ def video_to_pixel_mm(split_frame_array):
             # Once all the frames have been processed continue below
 
     area_std_filter_list = std_filter(list_mag_stripe_w_h_area_ratio_magname, 2, .5)
-    list_mag_stripe_filtered = remove_nested_with_idx(list_mag_stripe_w_h_area_ratio_magname, area_std_filter_list, 2)
+    list_mag_stripe_filtered = remove_nested_with_idx(
+        list_mag_stripe_w_h_area_ratio_magname, area_std_filter_list, 2)
 
     aspr_std_filter_list = std_filter(list_mag_stripe_filtered, 3, 2)
-    list_mag_stripe_filtered = remove_nested_with_idx(list_mag_stripe_filtered, aspr_std_filter_list, 3)
-
-
+    list_mag_stripe_filtered = remove_nested_with_idx(
+        list_mag_stripe_filtered, aspr_std_filter_list, 3)
 
     # diffrent magstripes demensions that are manufactured
     mag_stripe_constant_w_h_1 = [84.40, 7.9375]
@@ -66,13 +62,13 @@ def video_to_pixel_mm(split_frame_array):
     #dp_magdp_list = []
     xy_cordinates = []
 
-
     for mag_stripe_w_h_area_ratio_magname in list_mag_stripe_filtered:
 
         if 0.08981481481 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.095:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
             dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
-            magstripe_diag = np.sqrt(mag_stripe_constant_w_h_2[0]**2 + mag_stripe_constant_w_h_2[1]**2)
+            magstripe_diag = np.sqrt(
+                mag_stripe_constant_w_h_2[0]**2 + mag_stripe_constant_w_h_2[1]**2)
             ppmm = magstripe_diag/dp
             #dp_magdp_list.append([dp, magstripe_diag])
             xy_cordinates.append(mag_stripe_w_h_area_ratio_magname[5])
@@ -81,7 +77,8 @@ def video_to_pixel_mm(split_frame_array):
         elif 0.095 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.102666585:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
             dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
-            magstripe_diag = np.sqrt(mag_stripe_constant_w_h_2[0]**2 + mag_stripe_constant_w_h_2[1]**2)
+            magstripe_diag = np.sqrt(
+                mag_stripe_constant_w_h_2[0]**2 + mag_stripe_constant_w_h_2[1]**2)
             ppmm = magstripe_diag/dp
             #dp_magdp_list.append([dp, magstripe_diag])
             xy_cordinates.append(mag_stripe_w_h_area_ratio_magname[5])
@@ -90,7 +87,8 @@ def video_to_pixel_mm(split_frame_array):
         elif 0.12314814814 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.1385:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
             dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
-            magstripe_diag = np.sqrt(mag_stripe_constant_w_h_3[0]**2 + mag_stripe_constant_w_h_3[1]**2)
+            magstripe_diag = np.sqrt(
+                mag_stripe_constant_w_h_3[0]**2 + mag_stripe_constant_w_h_3[1]**2)
             ppmm = magstripe_diag/dp
             #dp_magdp_list.append([dp, magstripe_diag])
             xy_cordinates.append(mag_stripe_w_h_area_ratio_magname[5])
@@ -99,7 +97,8 @@ def video_to_pixel_mm(split_frame_array):
         elif 0.1386 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.1573:
             mag_stripe_w_h = mag_stripe_w_h_area_ratio_magname[:2]
             dp = np.sqrt(mag_stripe_w_h[0]**2 + mag_stripe_w_h[1]**2)
-            magstripe_diag = np.sqrt(mag_stripe_constant_w_h_4[0]**2 + mag_stripe_constant_w_h_4[1]**2)
+            magstripe_diag = np.sqrt(
+                mag_stripe_constant_w_h_4[0]**2 + mag_stripe_constant_w_h_4[1]**2)
             ppmm = magstripe_diag/dp
             #dp_magdp_list.append([dp, magstripe_diag])
             xy_cordinates.append(mag_stripe_w_h_area_ratio_magname[5])
@@ -120,13 +119,13 @@ def video_to_pixel_mm(split_frame_array):
             for ppmm in pixel_mm_mean_list:
                 file_txt.write(str(ppmm) + ' ' + '\n') '''
 
-    x_std_filter = std_filter(xy_cordinates, 0,  deviations_count = .3)
-    xy_cordinates = remove_nested_with_idx(xy_cordinates, x_std_filter,0 )
+    x_std_filter = std_filter(xy_cordinates, 0,  deviations_count= 0.7)
+    xy_cordinates = remove_nested_with_idx(xy_cordinates, x_std_filter, 0)
 
-    y_std_filter = std_filter(xy_cordinates,1 ,   deviations_count = .3)
-    xy_cordinates = remove_nested_with_idx(xy_cordinates,y_std_filter,1)
+    y_std_filter = std_filter(xy_cordinates, 1,   deviations_count= 0.7)
+    xy_cordinates = remove_nested_with_idx(xy_cordinates, y_std_filter, 1)
 
-    pixel_mm_filter = std_filter(pixel_mm_mean_list,0, deviations_count=.5)
-    pixel_mm_filtered = remove_nested_with_idx(pixel_mm_mean_list, pixel_mm_filter,0)
+    pixel_mm_filter = std_filter(pixel_mm_mean_list, 0, deviations_count=0.5)
+    pixel_mm_filtered = remove_nested_with_idx(pixel_mm_mean_list, pixel_mm_filter, 0)
 
-    return max(pixel_mm_filtered), max(xy_cordinates)
+    return max(pixel_mm_filtered), np.mean(xy_cordinates, axis=0)
