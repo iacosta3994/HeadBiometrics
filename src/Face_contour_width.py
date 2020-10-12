@@ -6,21 +6,25 @@ from src.canny_edge_detection_cv2 import *
 
 
 
-def img_head_contour(img_list):
-    if img is None:
-        print("Can't open image file")
+def img_head_contour(img_samples_array):
+    if img_samples_array is None:
+        print("Can't open sample array")
         return None
     main_contour_length =  None
     main_contour = None
     main_canny = None
-    for img in img_list:
+    for img in img_samples_array:
         contour, img_canny = head_contour(img)
-        contour_length = cv2.arcLength(contour, closed)
+        contour_length = cv2.arcLength(contour, closed =True)
+        if main_contour_length == None:
+            main_contour_length = contour_length
+            main_contour = contour
+            main_canny = img_canny
         if contour_length > main_contour_length:
             main_contour_length = contour_length
             main_contour = contour
             main_canny = img_canny
-    return contour, main_canny
+    return  main_canny, main_contour, main_contour_length
 
 # outputs the contour of the head
 def head_contour(img):
