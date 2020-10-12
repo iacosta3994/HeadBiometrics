@@ -21,13 +21,12 @@ if narrow_head_img is None:
     print("Narrow head img is none")
 else:
     cv2.imwrite("results.jpg",narrow_head_img)
-    above_eyes = crop_above_eyes(narrow_head_img,mag_xy)
-    if above_eyes is None:
-        print("above eyes is none")
+    img_samples_array = crop_above_eyes(narrow_head_img,mag_xy)
+    if img_samples_array is None:
+        print("img_samples_array is none")
     else:
-        front_contour = img_head_contour(above_eyes)
-
-
+        main_canny, main_contour, main_contour_length = img_head_contour(img_samples_array)
+cv2.imwrite("canny_image.jpg", main_canny)
 
 #contour_start = contour_bottom_left(front_contour)
 #contour_end = contour_bottom_right(front_contour)
