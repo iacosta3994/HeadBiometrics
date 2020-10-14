@@ -15,15 +15,25 @@ def img_head_contour(img_samples_array):
     main_canny = None
     for img in img_samples_array:
         contour, img_canny = head_contour(img)
-        contour_length = cv2.arcLength(contour, closed =True)
-        if main_contour_length == None:
+        contour_length = None
+        if contour is None:
+            print("contour in img head contour is none face contour width")
+        contour_length = cv2.arcLength(contour, closed =False)
+        if contour_length is None:
+            print("contour length is none on face contour width")
+        elif main_contour_length == None:
             main_contour_length = contour_length
             main_contour = contour
             main_canny = img_canny
-        if contour_length > main_contour_length:
+        elif contour_length > main_contour_length:
             main_contour_length = contour_length
             main_contour = contour
             main_canny = img_canny
+
+    if main_contour == None and main_contour_length == None and main_canny == None:
+        print("all 3 (contour, cnt length, and canny img ) came back as none ")
+
+
     return  main_canny, main_contour, main_contour_length
 
 # outputs the contour of the head
