@@ -1,6 +1,7 @@
 import os
 import cv2
 import uuid
+import numpy as np
 from src.canny_edge_detection_cv2 import *
 
 
@@ -10,30 +11,38 @@ def img_head_contour(img_samples_array):
     if img_samples_array is None:
         print("Can't open sample array")
         return None
-    main_contour_length =  None
-    main_contour = None
+
     main_canny = None
+    main_contour = None
+    main_contour_length = None
+
     for img in img_samples_array:
         contour, img_canny = head_contour(img)
-        contour_length = None
+
         if contour is None:
-            print("contour in img head contour is none face contour width")
+            continue
+
         contour_length = cv2.arcLength(contour, closed =False)
+
         if contour_length is None:
             print("contour length is none on face contour width")
-        elif main_contour_length == None:
-            main_contour_length = contour_length
-            main_contour = contour
+            continue
+
+        if main_contour_length is None:
             main_canny = img_canny
+            main_contour = contour
+            main_contour_length = contour_length
+
         elif contour_length > main_contour_length:
-            main_contour_length = contour_length
-            main_contour = contour
             main_canny = img_canny
+            main_contour = contour
+            main_contour_length = contour_length
+        else:
+            continue
 
-    if main_contour == None and main_contour_length == None and main_canny == None:
-        print("all 3 (contour, cnt length, and canny img ) came back as none ")
 
-
+    if main_canny is None and main_contour is None and main_contour_length is None:
+        print("no return values found")
     return  main_canny, main_contour, main_contour_length
 
 # outputs the contour of the head
