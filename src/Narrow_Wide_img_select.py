@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from src.face_contour_width import *
+from src.face_contour_width import head_contour
 
 left_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_lefteye_2splits.xml')
 right_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_righteye_2splits.xml')
@@ -40,27 +40,19 @@ def narrowest_img (img_array):     # Inputs frame-filename to scan for the narro
     return ret_img
 
 def widest_img(img_array):
-    head_contour_list = []
 
+    widest_head_img = None
+    largest_contour = None
     # itterating through each image in img array
     for img in img_array:
         # runs head contour that gets the contour from the img
         contour, img_canny = head_contour(img)
 
-        # asses the contour using its area
-        area = cv2.contourArea(contour)
-
-        # if the list is empty asign the first one
-        if not head_contour_list:
-            head_contour_list.append([contour, area, img])
-            continue
-        # if the area of the img is larger than the past frames replace it
-        if area > head_contour_list[0][1]:
-            head_contour_list.pop(0)
-            head_contour_list.append([contour, area, img])
-
-
+        contour_length = cv2.arcLength(contour)
+        if largest_contour == None or contour_length > largest_contour:
+            largest_contour = contour_length
+            widest_head_img = img
         else:
             continue
 
-    return head_contour_list[2]
+    return widest_head_img
