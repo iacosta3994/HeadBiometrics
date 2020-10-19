@@ -39,16 +39,17 @@ def face_detect_auto_crop(img, save_result):
             cv2.imwrite('img.png', final_img)
         return final_img
 
+
 def crop_above_eyes(img, mag_xy):
     if img is None:
         print("Image not loaded to crop")
         return None
-    #cascades for 3 faicial points
+    # cascades for left amd right eye
     left_eye = left_eye_cascade.detectMultiScale(img, 1.05, 5)
     right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 5)
     img_candidates = []
     if len(left_eye) > 0 and len(right_eye) > 0:
-        # X Y W H cordinates for each detected feature
+        # X Y W H cordinates for each eye, Magstripe brought from get Magstripe 
         (mag_x, mag_y) = mag_xy
         for (lex, ley, lew, leh) in left_eye:
             for (rex, rey, rew, reh) in right_eye:
@@ -57,19 +58,17 @@ def crop_above_eyes(img, mag_xy):
                 #adapting H W for each image
                 height, width = img.shape[:2]
 
-                # nose position is to the right than both eyes
+                # Magstripe position is to the right than both eyes
                 if mag_x > lex and mag_x > rex:
                     if ley > mag_y > rey:
                         above_eyes = round(((lex + rex) / 2) - (leh + reh / 4))
-                        print(lex, rex, leh, reh)
                         beginX = 0
                         endX = above_eyes
                         beginY = 0
                         endY = height
-                        print(  beginY, endY, beginX, endX)
                         top_img = img[beginY:endY, beginX:endX]
                         img_candidates.append(top_img)
-                # Nose is between both eyes and is below it
+                # Magstripe is between both eyes and is below it
                 elif lex < mag_x < rex:
                     if mag_y > lex and mag_y > rex:
                         above_eyes = round(((ley + rey) / 2) - (leh + reh / 4))
@@ -79,7 +78,7 @@ def crop_above_eyes(img, mag_xy):
                         endY = above_eyes
                         top_img = img[beginY:endY, beginX:endX]
                         img_candidates.append(top_img)
-                # Nose position is on the left side of both eyes
+                # Magstripe position is on the left side of both eyes
                 elif mag_x < lex and mag_x > rex:
                     if rey > mag_y > ley:
                         above_eyes = round(((lex + rex) / 2) + (leh + reh / 4))
@@ -89,7 +88,7 @@ def crop_above_eyes(img, mag_xy):
                         endY = height
                         top_img = img[beginY:endY, beginX:endX]
                         img_candidates.append(top_img)
-                # Nose is between both eyes but is above it
+                # Magstripe is between both eyes but is above it
                 elif lex < mag_x < rex:
                     if mag_y < ley and mag_y < rey:
                         above_eyes = round(((ley + rey)/2) + (leh + reh / 4))
@@ -115,7 +114,7 @@ def crop_above_eyes(img, mag_xy):
                     #adapting H W for each image
                     height, width = img.shape[:2]
 
-                    # nose position is to the right than both eyes
+                    # Magstripe position is to the right than both eyes
                     if mag_x > lex and mag_x > rex:
                         if ley > mag_y > rey:
                             above_eyes = round(((lex + rex) / 2) - (leh + reh / 4))
@@ -125,7 +124,7 @@ def crop_above_eyes(img, mag_xy):
                             endY = height
                             top_img = img[beginY:endY, beginX:endX]
                             img_candidates.append(top_img)
-                    # Nose is between both eyes and is below it
+                    # Magstripe is between both eyes and is below it
                     elif lex < mag_x < rex:
                         if mag_y > lex and mag_y > rex:
                             above_eyes = round(((ley + rey) / 2) - (leh + reh / 4))
@@ -135,7 +134,7 @@ def crop_above_eyes(img, mag_xy):
                             endY = above_eyes
                             top_img = img[beginY:endY, beginX:endX]
                             img_candidates.append(top_img)
-                    # Nose position is on the left side of both eyes
+                    # Magstripe position is on the left side of both eyes
                     elif mag_x < lex and mag_x > rex:
                         if rey > mag_y > ley:
                             above_eyes = round(((lex + rex) / 2) + (leh + reh / 4))
@@ -145,7 +144,7 @@ def crop_above_eyes(img, mag_xy):
                             endY = height
                             top_img = img[beginY:endY, beginX:endX]
                             img_candidates.append(top_img)
-                    # Nose is between both eyes but is above it
+                    # Magstripe is between both eyes but is above it
                     elif lex < mag_x < rex:
                         if mag_y < ley and mag_y < rey:
                             above_eyes = round(((ley + rey)/2) + (leh + reh / 4))
@@ -171,7 +170,7 @@ def crop_above_eyes(img, mag_xy):
                         #adapting H W for each image
                         height, width = img.shape[:2]
 
-                        # nose position is to the right than both eyes
+                        # Magstripe position is to the right than both eyes
                         if mag_x > lex and mag_x > rex:
                             if ley > mag_y > rey:
                                 above_eyes = round((lex + rex) / 2) - (leh + reh / 4)
@@ -181,7 +180,7 @@ def crop_above_eyes(img, mag_xy):
                                 endY = height
                                 top_img = img[beginY:endY, beginX:endX]
                                 img_candidates.append(top_img)
-                        # Nose is between both eyes and is below it
+                        # Magstripe is between both eyes and is below it
                         elif lex < mag_x < rex:
                             if mag_y > lex and mag_y > rex:
                                 above_eyes = round((ley + rey) / 2) - (leh + reh / 4)
@@ -191,7 +190,7 @@ def crop_above_eyes(img, mag_xy):
                                 endY = above_eyes
                                 top_img = img[beginY:endY, beginX:endX]
                                 img_candidates.append(top_img)
-                        # Nose position is on the left side of both eyes
+                        # Magstripe position is on the left side of both eyes
                         elif mag_x < lex and mag_x > rex:
                             if rey > mag_y > ley:
                                 above_eyes = round((lex + rex) / 2) + (leh + reh / 4)
@@ -201,7 +200,7 @@ def crop_above_eyes(img, mag_xy):
                                 endY = height
                                 top_img = img[beginY:endY, beginX:endX]
                                 img_candidates.append(top_img)
-                        # Nose is between both eyes but is above it
+                        # Magstripe is between both eyes but is above it
                         elif lex < mag_x < rex:
                             if mag_y < ley and mag_y < rey:
                                 above_eyes = round((ley + rey)/2) + (leh + reh / 4)
@@ -227,7 +226,7 @@ def crop_above_eyes(img, mag_xy):
                             #adapting H W for each image
                             height, width = img.shape[:2]
 
-                            # nose position is to the right than both eyes
+                            # Magstripe position is to the right than both eyes
                             if mag_x > lex and mag_x > rex:
                                 if ley > mag_y > rey:
                                     above_eyes = round((lex + rex) / 2) - (leh + reh / 4)
@@ -237,7 +236,7 @@ def crop_above_eyes(img, mag_xy):
                                     endY = height
                                     top_img = img[beginY:endY, beginX:endX]
                                     img_candidates.append(top_img)
-                            # Nose is between both eyes and is below it
+                            # Magstripe is between both eyes and is below it
                             elif lex < mag_x < rex:
                                 if mag_y > lex and mag_y > rex:
                                     above_eyes = round((ley + rey) / 2) - (leh + reh / 4)
@@ -247,7 +246,7 @@ def crop_above_eyes(img, mag_xy):
                                     endY = above_eyes
                                     top_img = img[beginY:endY, beginX:endX]
                                     img_candidates.append(top_img)
-                            # Nose position is on the left side of both eyes
+                            # Magstripe position is on the left side of both eyes
                             elif mag_x < lex and mag_x > rex:
                                 if rey > mag_y > ley:
                                     above_eyes = round((lex + rex) / 2) + (leh + reh / 4)
@@ -257,7 +256,7 @@ def crop_above_eyes(img, mag_xy):
                                     endY = height
                                     top_img = img[beginY:endY, beginX:endX]
                                     img_candidates.append(top_img)
-                            # Nose is between both eyes but is above it
+                            # Magstripe is between both eyes but is above it
                             elif lex < mag_x < rex:
                                 if mag_y < ley and mag_y < rey:
                                     above_eyes = round((ley + rey)/2) + (leh + reh / 4)
