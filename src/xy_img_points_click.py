@@ -2,14 +2,20 @@ import cv2
 import numpy as np
 from side_quantify import  side_head_img
 
-def point_select(event, x, y, flags, params):
-
+def point_select(event, x,y , flags, params):
+    global mouseX, mouseY
     if event == cv2.EVENT_LBUTTONDOWN:
-        print(x, ' ', y)
+        mouse_X,mouse_Y = x,y
 
-if __name__ == "__main__":
 
-    cv2.imshow("img", side_head_img)
-    cv2.setMouseCallback("img", point_select)
-    cv2.waitKey(0)
+def point_return(img):
+
+    cv2.namedWindow('img')
+    cv2.setMouseCallback('img', point_select)
+
+    while True:
+        cv2.imshow("img", img)
+        if cv2.waitKey(1) & oxFF == ord('q'):
+            break
     cv2.destroyAllWindows()
+    return mouse_X, mouse_Y
