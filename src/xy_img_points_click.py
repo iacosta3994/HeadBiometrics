@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from side_quantify import  side_head_img
+
 
 def point_select(event, x,y , flags, params):
     global mouseX, mouseY
