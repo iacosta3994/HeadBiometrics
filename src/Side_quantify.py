@@ -1,34 +1,25 @@
-
 import os
 import sys
 import numpy as np
 import matplotlib
 import cv2
-from src.key_frame_extraction import *
-from src.canny_edge_detection_cv2 import *
-from src.mag_stripe_search import *
-from src.video_to_mm import *
-from src.face_contour_width import *
-from src.path_finder import *
+from src.key_frame_extraction import split_frames
+from src.video_to_mm import video_to_pixel_mm
+from src.keep_above_points import keep_img_above_points
+from src.distance_between_points import dif_in_points
 
-path = 'Video_Tests\B_test_BryanL.mp4'
-img_array = split_frames(path)
-pixel_mm, mag_xy = video_to_pixel_mm(img_array)
-narrow_head_img = narrowest_img(img_array)
-front_contour = img_head_contour(narrow_head_img)
+def side_mm_metrics(path):
+    img_array = split_frames(path)
+    pixel_mm, mag_xy = video_to_pixel_mm(img_array)
+
+    side_head_img = widest_img(img_array)
+    if side_head_img is None:
+        print("side_head_img is None")
+    else:
+        pointA, pointB =
+        final_img = keep_img_above_points(side_head_img, pointA, pointB)
+        front2nape = img_mask_contour(final_img)
+        length = dif_in_points(pointA, pointB)
 
 
-
-contour_start = contour_bottom_left(front_contour)
-contour_end = contour_bottom_right(front_contour)
-
-contour_mask = make_mask_from_contour(front_contour)
-
-astar(contour_mask, contour_start, contour_end)
-
-print(pixel_mm)
-
-path = 'E:/test'
-contour_name = str(uuid.uuid4())
-cv2.drawContours(img, contour, -1, (0, 255, 0), 3)
-cv2.imwrite(os.path.join(path ,  'result.jpg'), img)
+    return front2nape, length
