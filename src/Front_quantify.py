@@ -27,8 +27,8 @@ def front_mm_metrics(path):
 
             ear_to_ear_mm = int(main_contour_length * pixel_mm[0])
 
-            head_width = ret_contour_width(main_contour)
+            head_width_mm = int(ret_contour_width(main_contour * pixel_mm[0])
 
             #cv2.imwrite("results.jpg",narrow_head_img)
             #cv2.imwrite("canny_image.jpg", main_canny)
-    return ear_to_ear_mm , int(head_width)
+    return ear_to_ear_mm , head_width_mm
