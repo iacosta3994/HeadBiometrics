@@ -12,7 +12,6 @@ from src.face_contour_width import img_head_contour
 from src.contour_width_max import ret_contour_width
 
 def front_mm_metrics(path):
-    path = 'Video_Tests\A_test_alex.mp4'
     img_array = split_frames(path)
     pixel_mm, mag_xy = video_to_pixel_mm(img_array)
 
@@ -20,8 +19,6 @@ def front_mm_metrics(path):
     if narrow_head_img is None:
         print("Narrow head img is none")
     else:
-        #cv2.imwrite("results.jpg",narrow_head_img)
-        #cv2.imwrite("canny_image.jpg", main_canny)
         img_samples_array = crop_above_eyes(narrow_head_img,mag_xy)
         if img_samples_array is None:
             print("img_samples_array is none")
@@ -31,4 +28,7 @@ def front_mm_metrics(path):
             ear_to_ear_mm = int(main_contour_length * pixel_mm[0])
 
             head_width = ret_contour_width(main_contour)
+
+            #cv2.imwrite("results.jpg",narrow_head_img)
+            #cv2.imwrite("canny_image.jpg", main_canny)
     return ear_to_ear_mm , int(head_width)
