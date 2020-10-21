@@ -9,7 +9,7 @@ from src.narrow_wide_img_select import widest_img
 from src.xy_img_points_click import point_return
 from src.keep_above_points import keep_img_above_points
 from src.face_contour_width import img_head_contour
-from src.distance_between_points import dif_in_points
+from src.distance_between_points import dis_in_points
 
 
 def side_mm_metrics(path):
@@ -25,7 +25,8 @@ def side_mm_metrics(path):
         _, _, front2nape = img_head_contour(final_img)
 
         pointA, pointB = point_return(side_head_img)
-        length = dif_in_points(pointA, pointB)
+        length = dis_in_points(pointA, pointB)
 
-
+        front2nape = int(front2nape * pixel_mm[0])
+        length = int(length * pixel_mm[0])
     return front2nape, length
