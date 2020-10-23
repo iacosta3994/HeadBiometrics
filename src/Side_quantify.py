@@ -20,12 +20,17 @@ def side_mm_metrics(path):
     if side_head_img is None:
         print("side_head_img is None")
     else:
-        front, nape = point_return(side_head_img)
-        final_img = keep_img_above_points(side_head_img.copy, front, nape)
+        print("select front to nape")
+        fxA, fxB = point_return(side_head_img)
+        nxA, nyA = point_return(side_head_img)
+
+        final_img = keep_img_above_points(side_head_img.copy, (fxA, fxB), (nxA, nyA))
         _, _, front2nape = img_head_contour(final_img)
 
-        pointA, pointB = point_return(side_head_img)
-        length = dis_in_points(pointA, pointB)
+        print("select length points")
+        lxA, lyA = point_return(side_head_img)
+        lxB, lyB = point_return(side_head_img)
+        length = dis_in_points((lxa, lyA), (lxB, lyB))
 
         front2nape = int(front2nape * pixel_mm[0])
         length = int(length * pixel_mm[0])
