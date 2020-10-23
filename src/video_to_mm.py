@@ -119,13 +119,13 @@ def video_to_pixel_mm(split_frame_array):
             for ppmm in pixel_mm_mean_list:
                 file_txt.write(str(ppmm) + ' ' + '\n') '''
 
-    x_std_filter = std_filter(xy_cordinates, 0,  deviations_count= 0.7)
+    x_std_filter = std_filter(xy_cordinates, 0,  deviations_count=0.7)
     xy_cordinates = remove_nested_with_idx(xy_cordinates, x_std_filter, 0)
 
-    y_std_filter = std_filter(xy_cordinates, 1,   deviations_count= 0.7)
+    y_std_filter = std_filter(xy_cordinates, 1,   deviations_count=0.7)
     xy_cordinates = remove_nested_with_idx(xy_cordinates, y_std_filter, 1)
 
-    pixel_mm_filter = std_filter(pixel_mm_mean_list, 0, deviations_count=0.5)
+    pixel_mm_filter = std_filter(pixel_mm_mean_list, 0, deviations_count=1)
     pixel_mm_filtered = remove_nested_with_idx(pixel_mm_mean_list, pixel_mm_filter, 0)
 
     return max(pixel_mm_filtered), np.mean(xy_cordinates, axis=0)

@@ -5,8 +5,6 @@ import numpy as np
 from src.canny_edge_detection_cv2 import *
 
 
-
-
 def img_head_contour(img_samples_array):
     if img_samples_array is None:
         print("Can't open sample array")
@@ -22,7 +20,7 @@ def img_head_contour(img_samples_array):
         if contour is None:
             continue
 
-        contour_length = cv2.arcLength(contour, closed =False)
+        contour_length = cv2.arcLength(contour, closed=False)
 
         if contour_length is None:
             print("contour length is none on face contour width")
@@ -40,12 +38,13 @@ def img_head_contour(img_samples_array):
         else:
             continue
 
-
     if main_canny is None and main_contour is None and main_contour_length is None:
         print("no return values found")
-    return  main_canny, main_contour, main_contour_length
+    return main_canny, main_contour, main_contour_length
 
 # outputs the contour of the head
+
+
 def head_contour(img):
 
     img = auto_canny_face(img, sigma=.22)

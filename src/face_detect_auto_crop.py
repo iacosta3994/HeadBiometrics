@@ -3,9 +3,10 @@ import sys
 import os
 import numpy as np
 
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades +'haarcascade_frontalface_default.xml')
-left_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades +'haarcascade_lefteye_2splits.xml')
-right_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades +'haarcascade_righteye_2splits.xml')
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+left_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_lefteye_2splits.xml')
+right_eye_cascade = cv2.CascadeClassifier(
+    cv2.data.haarcascades + 'haarcascade_righteye_2splits.xml')
 
 
 def face_detect_auto_crop(img, save_result):
@@ -16,13 +17,12 @@ def face_detect_auto_crop(img, save_result):
 
     #img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     face = face_cascade.detectMultiScale(img, 1.1, 3, minSize=(100, 100))
-    eye = eye_cascade.detectMultiScale(img,1.1, 3, minSize =(100,100))
+    eye = eye_cascade.detectMultiScale(img, 1.1, 3, minSize=(100, 100))
 
     cascade_used = eye
 
     if cascade_used is None:
         return None
-
 
     for (x, y, w, h) in cascade_used:
         r = max(w, h) / 2
@@ -49,13 +49,12 @@ def crop_above_eyes(img, mag_xy):
     right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 5)
     img_candidates = []
     if len(left_eye) > 0 and len(right_eye) > 0:
-        # X Y W H cordinates for each eye, Magstripe brought from get Magstripe 
+        # X Y W H cordinates for each eye, Magstripe brought from get Magstripe
         (mag_x, mag_y) = mag_xy
         for (lex, ley, lew, leh) in left_eye:
             for (rex, rey, rew, reh) in right_eye:
 
-
-                #adapting H W for each image
+                # adapting H W for each image
                 height, width = img.shape[:2]
 
                 # Magstripe position is to the right than both eyes
@@ -100,18 +99,17 @@ def crop_above_eyes(img, mag_xy):
                         img_candidates.append(top_img)
                 else:
                     print("could not crop image L5")
-                    print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y) )
+                    print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y))
                     return img
-    elif len(left_eye) == 0 or  len(right_eye) == 0:
-        left_eye =  left_eye_cascade.detectMultiScale(img, 1.05, 4)
+    elif len(left_eye) == 0 or len(right_eye) == 0:
+        left_eye = left_eye_cascade.detectMultiScale(img, 1.05, 4)
         right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 4)
         if len(left_eye) > 0 and len(right_eye) > 0:
             (mag_x, mag_y) = mag_xy
             for (lex, ley, lew, leh) in left_eye:
                 for (rex, rey, rew, reh) in right_eye:
 
-
-                    #adapting H W for each image
+                    # adapting H W for each image
                     height, width = img.shape[:2]
 
                     # Magstripe position is to the right than both eyes
@@ -156,18 +154,17 @@ def crop_above_eyes(img, mag_xy):
                             img_candidates.append(top_img)
                     else:
                         print("could not crop image L4")
-                        print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y) )
+                        print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y))
                         return img
         elif len(left_eye) == 0 or len(right_eye) == 0:
-            left_eye =  left_eye_cascade.detectMultiScale(img, 1.05, 3)
+            left_eye = left_eye_cascade.detectMultiScale(img, 1.05, 3)
             right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 3)
             if len(left_eye) > 0 and len(right_eye) > 0:
                 (mag_x, mag_y) = mag_xy
                 for (lex, ley, lew, leh) in left_eye:
                     for (rex, rey, rew, reh) in right_eye:
 
-
-                        #adapting H W for each image
+                        # adapting H W for each image
                         height, width = img.shape[:2]
 
                         # Magstripe position is to the right than both eyes
@@ -212,18 +209,17 @@ def crop_above_eyes(img, mag_xy):
                                 img_candidates.append(top_img)
                         else:
                             print("could not crop image L3")
-                            print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y) )
+                            print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y))
                             return None
             elif len(left_eye) == 0 or len(right_eye) == 0:
-                left_eye =  left_eye_cascade.detectMultiScale(img, 1.05, 2)
+                left_eye = left_eye_cascade.detectMultiScale(img, 1.05, 2)
                 right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 2)
                 if len(left_eye) > 0 and len(right_eye) > 0:
                     (mag_x, mag_y) = mag_xy
                     for (lex, ley, lew, leh) in left_eye:
                         for (rex, rey, rew, reh) in right_eye:
 
-
-                            #adapting H W for each image
+                            # adapting H W for each image
                             height, width = img.shape[:2]
 
                             # Magstripe position is to the right than both eyes
@@ -268,6 +264,6 @@ def crop_above_eyes(img, mag_xy):
                                     img_candidates.append(top_img)
                             else:
                                 print("could not crop image L2")
-                                print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y) )
+                                print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y))
                                 return None
     return img_candidates
