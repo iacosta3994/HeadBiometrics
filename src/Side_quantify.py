@@ -16,8 +16,10 @@ def point_select(event, x, y, flags, params):
     global points
 
     if event == cv2.EVENT_LBUTTONDOWN:
+        print(x, " ", y)
         points.append((x, y))
     elif event == cv2.EVENT_LBUTTONUP:
+        print(x, " ", y)
         points.append((x, y))
 
 def point_return(img):
