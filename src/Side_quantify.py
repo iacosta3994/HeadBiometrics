@@ -6,10 +6,36 @@ import cv2
 from src.key_frame_extraction import split_frames
 from src.video_to_mm import video_to_pixel_mm
 from src.narrow_wide_img_select import widest_img
-from src.xy_img_points_click import point_return
+#from src.xy_img_points_click import point_return
 from src.keep_above_points import keep_img_above_points
 from src.face_contour_width import img_head_contour
 from src.distance_between_points import dis_in_points
+
+points = []
+def point_select(event, x, y, flags, params):
+    global points
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        points.append((x, y))
+    elif event == cv2.EVENT_LBUTTONUP:
+        points.append((x, y))
+
+def point_return(img):
+    global points
+
+
+    cv2.namedWindow('img')
+    cv2.setMouseCallback('img', point_select)
+
+
+    while True:
+        cv2.imshow("img", img)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    cv2.destroyAllWindows()
+    print (points)
+    print(points[-2], points[-1])
+    return points[-2], points[-1]
 
 
 def side_mm_metrics(path):
@@ -21,16 +47,15 @@ def side_mm_metrics(path):
         print("side_head_img is None")
     else:
         print("select front to nape")
-        fxA, fxB = point_return(side_head_img)
-        nxA, nyA = point_return(side_head_img)
+        front, nape = point_return(side_head_img)
 
-        final_img = keep_img_above_points(side_head_img.copy, (fxA, fxB), (nxA, nyA))
+        final_img = keep_img_above_points(side_head_img.copy,  front, nape)
         _, _, front2nape = img_head_contour(final_img)
 
         print("select length points")
-        lxA, lyA = point_return(side_head_img)
-        lxB, lyB = point_return(side_head_img)
-        length = dis_in_points((lxa, lyA), (lxB, lyB))
+        eyebrows, back = point_return(side_head_img)
+
+        length = dis_in_points( eyebrows,  back)
 
         front2nape = int(front2nape * pixel_mm[0])
         length = int(length * pixel_mm[0])
