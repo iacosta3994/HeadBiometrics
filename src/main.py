@@ -11,7 +11,7 @@ def main(f_path, s_path):
     ear_to_ear_mm, head_width_mm = front_mm_metrics(f_path)
     front2nape_mm, length_mm = side_mm_metrics(s_path)
 
-    circumference_mm = (((width * 2) + (length * 2)) * 0.834626841674)
+    circumference_mm = (((head_width_mm * 2) + (length_mm * 2)) * 0.834626841674)
 
     return ear_to_ear_mm, front2nape_mm, circumference_mm
 
