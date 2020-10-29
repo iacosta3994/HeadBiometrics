@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import matplotlib
 import cv2
+import copy
 from src.key_frame_extraction import split_frames
 from src.video_to_mm import video_to_pixel_mm
 from src.narrow_wide_img_select import widest_img
@@ -35,8 +36,7 @@ def point_return(img):
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()
-    print (points)
-    print(points[-2], points[-1])
+    
     return points[-2], points[-1]
 
 
@@ -51,7 +51,9 @@ def side_mm_metrics(path):
         print("select front to nape")
         front, nape = point_return(side_head_img)
 
-        final_img = keep_img_above_points(side_head_img.copy,  front, nape)
+        img_duplicate = side_head_img.copy()
+
+        final_img = keep_img_above_points(img_duplicate,  front, nape)
         _, _, front2nape = img_head_contour(final_img)
 
         print("select length points")
