@@ -6,15 +6,16 @@ from src.canny_edge_detection_cv2 import *
 
 
 def img_head_contour(img_samples_array):
-    if img_samples_array is None:
-        print("Can't open sample array")
-        return None
-
     main_canny = None
     main_contour = None
     main_contour_length = None
 
+    if img_samples_array is None:
+        print("Can't open sample array")
+        return main_canny, main_contour, main_contour_length
+
     for img in img_samples_array:
+
         contour, img_canny = head_contour(img)
 
         if contour is None:
@@ -55,9 +56,7 @@ def head_contour(img):
     contour = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # grabs the largest contour
     contour = get_contour(contour)
-    # in the case there is 2 contours made sure to grab the one with largest area
-    contour = max(contour, key=cv2.contourArea)
-
+    contour = max(contour, key=cv2.arcLength(contour, closed=False))
     return contour, img
 
 
