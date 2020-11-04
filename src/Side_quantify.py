@@ -36,7 +36,7 @@ def point_return(img):
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()
-    
+
     return points[-2], points[-1]
 
 
@@ -54,6 +54,7 @@ def side_mm_metrics(path):
         img_duplicate = side_head_img.copy()
 
         final_img = keep_img_above_points(img_duplicate,  front, nape)
+        final_img = [final_img]
         _, _, front2nape = img_head_contour(final_img)
 
         print("select length points")
