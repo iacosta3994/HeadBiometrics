@@ -16,10 +16,20 @@ def img_head_contour(img_samples_array):
 
     for img in img_samples_array:
 
+        img_duplicate = img.copy()
+
+        if len(img.shape) == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
         contour, img_canny = head_contour(img)
 
         if contour is None:
             continue
+
+        cv2.drawContours(img_duplicate, contour, -1, (0,255,0), 3)
+        cv2.imshow('Contours', img_duplicate)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
         contour_length = cv2.arcLength(contour, closed=False)
 
@@ -27,12 +37,7 @@ def img_head_contour(img_samples_array):
             print("contour length is none on face contour width")
             continue
 
-        if main_contour_length is None:
-            main_canny = img_canny
-            main_contour = contour
-            main_contour_length = contour_length
-
-        elif contour_length > main_contour_length:
+        if main_contour_length is None or contour_length > main_contour_length:
             main_canny = img_canny
             main_contour = contour
             main_contour_length = contour_length
@@ -52,19 +57,25 @@ def head_contour(img):
 
     img = make_sobel_face(img)
 
+
     # creates list of contours
-    contour = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # grabs the largest contour
-    contour = get_contour(contour)
-    contour = max(contour, key=cv2.arcLength(contour, closed=False))
+
+    contour = get_contour(contours)
+    if len(contour) == 0:
+        return None , None
+
+    contour = max(contour, key = cv2.contourArea)
+
     return contour, img
 
 
-def get_contour(contour):
-    if len(contour) == 2:
-        contour = contour[0]
-    elif len(contour) == 3:
-        contour = contour[1]
+def get_contour(contours):
+    if len(contours) == 2:
+        contour = contours[0]
+    elif len(contours) == 3:
+        contour = contours[1]
     else:
         raise Exception(
             ("contour in face_contour_width is not working as expected,findContours changed output type check opencv documentation for updates"))
