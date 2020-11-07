@@ -17,5 +17,5 @@ def main(f_path, s_path):
 
 
 ear_to_ear_mm, front2nape_mm, circumference_mm = main(
-    'Video_Tests/A_test_alex.mp4', 'Video_Tests/B_test_alex.mp4')
+    'Video_Tests/A_test_self.mp4', 'Video_Tests/B_test_self.mp4')
 print(ear_to_ear_mm, front2nape_mm, circumference_mm)
