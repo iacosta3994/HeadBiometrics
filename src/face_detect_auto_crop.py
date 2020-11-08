@@ -273,10 +273,9 @@ def crop_above_eyes_w_recursion(img, mag_xy):
     if img is None:
         print("Image not loaded to crop")
         return None
-
     img_candidates = []
 
-    above_eyes_recursive(img, mag_xy, img_candidates)
+    img_candidates = above_eyes_recursive(img, mag_xy, img_candidates)
 
     return img_candidates
 
@@ -291,11 +290,12 @@ def above_eyes_recursive(img, mag_xy, img_candidates, scaleFactor = 1.4, minNeig
 
     # adapting H W for each image in larger scope
     height, width = img.shape[:2]
-    while  len(left_eye) > 0 and len(right_eye) > 0:
-        # X Y W H cordinates for each eye, Magstripe brought from get Magstripe
-        (mag_x, mag_y) = mag_xy
+
+    if len(left_eye)> 0 and len(right_eye) > 0 and scaleFactor >= 1.05:
+
         for (lex, ley, lew, leh) in left_eye:
             for (rex, rey, rew, reh) in right_eye:
+                (mag_x, mag_y) = mag_xy
                 # Magstripe position is to the right than both eyes
                 if mag_x > lex and mag_x > rex:
                     if ley > mag_y > rey:
@@ -306,6 +306,8 @@ def above_eyes_recursive(img, mag_xy, img_candidates, scaleFactor = 1.4, minNeig
                         endY = height
                         top_img = img[beginY:endY, beginX:endX]
                         img_candidates.append(top_img)
+                    return
+
                 # Magstripe is between both eyes and is below it
                 elif lex < mag_x < rex:
                     if mag_y > lex and mag_y > rex:
@@ -316,6 +318,7 @@ def above_eyes_recursive(img, mag_xy, img_candidates, scaleFactor = 1.4, minNeig
                         endY = above_eyes
                         top_img = img[beginY:endY, beginX:endX]
                         img_candidates.append(top_img)
+                    return
                 # Magstripe position is on the left side of both eyes
                 elif mag_x < lex and mag_x > rex:
                     if rey > mag_y > ley:
@@ -326,6 +329,7 @@ def above_eyes_recursive(img, mag_xy, img_candidates, scaleFactor = 1.4, minNeig
                         endY = height
                         top_img = img[beginY:endY, beginX:endX]
                         img_candidates.append(top_img)
+                    return
                 # Magstripe is between both eyes but is above it
                 elif lex < mag_x < rex:
                     if mag_y < ley and mag_y < rey:
@@ -336,6 +340,25 @@ def above_eyes_recursive(img, mag_xy, img_candidates, scaleFactor = 1.4, minNeig
                         endY = height
                         top_img = img[beginY:endY, beginX:endX]
                         img_candidates.append(top_img)
+                    return
                 else:
-                    scaleFactor -= .05
-                    above_eyes_recursive(img, mag_xy, scaleFactor, minNeighbors )
+                    end_else(img, mag_xy, img_candidates, scaleFactor, minNeighbors)
+
+    else:
+        end_else(img, mag_xy, img_candidates, scaleFactor, minNeighbors)
+
+def end_else(img, mag_xy, img_candidates, scaleFactor, minNeighbors):
+    print(scaleFactor, len(img_candidates), minNeighbors)
+    if scaleFactor <= 1.071 and len(img_candidates) < 1 and minNeighbors >= 2:
+        minNeighbors -= 1
+        print ("minNeighbors: ", minNeighbors)
+        img_candidates = above_eyes_recursive(img, mag_xy, img_candidates, scaleFactor, minNeighbors )
+    elif len(img_candidates) >= 1:
+        print("return images")
+        return img_candidates
+    elif 1.11 <= scaleFactor <= 1.4:
+        scaleFactor -= 0.07
+        print("scaleFactor: ", scaleFactor)
+        img_candidates = above_eyes_recursive(img, mag_xy, img_candidates, scaleFactor, minNeighbors )
+    else:
+        print(scaleFactor, len(img_candidates), minNeighbors)
