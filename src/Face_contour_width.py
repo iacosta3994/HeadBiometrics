@@ -10,7 +10,7 @@ def img_head_contour(img_samples_array):
     main_contour = None
     main_contour_length = None
 
-    if img_samples_array is None:
+    if len(img_samples_array) == 0:
         print("Can't open sample array")
         return main_canny, main_contour, main_contour_length
 
