@@ -48,6 +48,7 @@ def crop_above_eyes(img, mag_xy):
     left_eye = left_eye_cascade.detectMultiScale(img, 1.05, 5)
     right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 5)
     img_candidates = []
+    img_orientation = []
     if len(left_eye) > 0 and len(right_eye) > 0:
         # X Y W H cordinates for each eye, Magstripe brought from get Magstripe
         (mag_x, mag_y) = mag_xy
@@ -67,6 +68,7 @@ def crop_above_eyes(img, mag_xy):
                         endY = height
                         top_img = img[beginY:endY, beginX:endX]
                         img_candidates.append(top_img)
+                        img_orientation.append([beginY,endY, beginX,endX])
                 # Magstripe is between both eyes and is below it
                 elif lex < mag_x < rex:
                     if mag_y > lex and mag_y > rex:
@@ -77,6 +79,8 @@ def crop_above_eyes(img, mag_xy):
                         endY = above_eyes
                         top_img = img[beginY:endY, beginX:endX]
                         img_candidates.append(top_img)
+                        img_orientation.append([beginY,endY, beginX,endX])
+
                 # Magstripe position is on the left side of both eyes
                 elif mag_x < lex and mag_x > rex:
                     if rey > mag_y > ley:
@@ -87,6 +91,7 @@ def crop_above_eyes(img, mag_xy):
                         endY = height
                         top_img = img[beginY:endY, beginX:endX]
                         img_candidates.append(top_img)
+                        img_orientation.append([beginY,endY, beginX,endX])
                 # Magstripe is between both eyes but is above it
                 elif lex < mag_x < rex:
                     if mag_y < ley and mag_y < rey:
@@ -97,6 +102,7 @@ def crop_above_eyes(img, mag_xy):
                         endY = height
                         top_img = img[beginY:endY, beginX:endX]
                         img_candidates.append(top_img)
+                        img_orientation.append([beginY,endY, beginX,endX])
                 else:
                     print("could not crop image L5")
                     print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y))
@@ -122,6 +128,7 @@ def crop_above_eyes(img, mag_xy):
                             endY = height
                             top_img = img[beginY:endY, beginX:endX]
                             img_candidates.append(top_img)
+                            img_orientation.append([beginY,endY, beginX,endX])
                     # Magstripe is between both eyes and is below it
                     elif lex < mag_x < rex:
                         if mag_y > lex and mag_y > rex:
@@ -132,6 +139,7 @@ def crop_above_eyes(img, mag_xy):
                             endY = above_eyes
                             top_img = img[beginY:endY, beginX:endX]
                             img_candidates.append(top_img)
+                            img_orientation.append([beginY,endY, beginX,endX])
                     # Magstripe position is on the left side of both eyes
                     elif mag_x < lex and mag_x > rex:
                         if rey > mag_y > ley:
@@ -142,6 +150,7 @@ def crop_above_eyes(img, mag_xy):
                             endY = height
                             top_img = img[beginY:endY, beginX:endX]
                             img_candidates.append(top_img)
+                            img_orientation.append([beginY,endY, beginX,endX])
                     # Magstripe is between both eyes but is above it
                     elif lex < mag_x < rex:
                         if mag_y < ley and mag_y < rey:
@@ -152,6 +161,7 @@ def crop_above_eyes(img, mag_xy):
                             endY = height
                             top_img = img[beginY:endY, beginX:endX]
                             img_candidates.append(top_img)
+                            img_orientation.append([beginY,endY, beginX,endX])
                     else:
                         print("could not crop image L4")
                         print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y))
@@ -177,6 +187,7 @@ def crop_above_eyes(img, mag_xy):
                                 endY = height
                                 top_img = img[beginY:endY, beginX:endX]
                                 img_candidates.append(top_img)
+                                img_orientation.append([beginY,endY, beginX,endX])
                         # Magstripe is between both eyes and is below it
                         elif lex < mag_x < rex:
                             if mag_y > lex and mag_y > rex:
@@ -187,6 +198,7 @@ def crop_above_eyes(img, mag_xy):
                                 endY = above_eyes
                                 top_img = img[beginY:endY, beginX:endX]
                                 img_candidates.append(top_img)
+                                img_orientation.append([beginY,endY, beginX,endX])
                         # Magstripe position is on the left side of both eyes
                         elif mag_x < lex and mag_x > rex:
                             if rey > mag_y > ley:
@@ -197,6 +209,7 @@ def crop_above_eyes(img, mag_xy):
                                 endY = height
                                 top_img = img[beginY:endY, beginX:endX]
                                 img_candidates.append(top_img)
+                                img_orientation.append([beginY,endY, beginX,endX])
                         # Magstripe is between both eyes but is above it
                         elif lex < mag_x < rex:
                             if mag_y < ley and mag_y < rey:
@@ -207,6 +220,7 @@ def crop_above_eyes(img, mag_xy):
                                 endY = height
                                 top_img = img[beginY:endY, beginX:endX]
                                 img_candidates.append(top_img)
+                                img_orientation.append([beginY,endY, beginX,endX])
                         else:
                             print("could not crop image L3")
                             print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y))
@@ -232,6 +246,7 @@ def crop_above_eyes(img, mag_xy):
                                     endY = height
                                     top_img = img[beginY:endY, beginX:endX]
                                     img_candidates.append(top_img)
+                                    img_orientation.append([beginY,endY, beginX,endX])
                             # Magstripe is between both eyes and is below it
                             elif lex < mag_x < rex:
                                 if mag_y > lex and mag_y > rex:
@@ -242,6 +257,7 @@ def crop_above_eyes(img, mag_xy):
                                     endY = above_eyes
                                     top_img = img[beginY:endY, beginX:endX]
                                     img_candidates.append(top_img)
+                                    img_orientation.append([beginY,endY, beginX,endX])
                             # Magstripe position is on the left side of both eyes
                             elif mag_x < lex and mag_x > rex:
                                 if rey > mag_y > ley:
@@ -252,6 +268,7 @@ def crop_above_eyes(img, mag_xy):
                                     endY = height
                                     top_img = img[beginY:endY, beginX:endX]
                                     img_candidates.append(top_img)
+                                    img_orientation.append([beginY,endY, beginX,endX])
                             # Magstripe is between both eyes but is above it
                             elif lex < mag_x < rex:
                                 if mag_y < ley and mag_y < rey:
@@ -262,11 +279,12 @@ def crop_above_eyes(img, mag_xy):
                                     endY = height
                                     top_img = img[beginY:endY, beginX:endX]
                                     img_candidates.append(top_img)
+                                    img_orientation.append([beginY,endY, beginX,endX])
                             else:
                                 print("could not crop image L2")
                                 print((lex, ley, lew, leh), (rex, rey, rew, reh), (mag_x, mag_y))
                                 return None
-    return img_candidates
+    return img_candidates , img_orientation
 
 
 def crop_above_eyes_w_recursion(img, mag_xy):
