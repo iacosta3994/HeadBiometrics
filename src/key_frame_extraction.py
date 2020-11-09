@@ -2,10 +2,9 @@ import cv2
 import os
 import numpy as np
 
-# protocol://host:port/script_name?script_params|auth
+
+
 # Function splits incoming mp4 and returns
-
-
 def split_frames(cap_origin_path):
     # Assigning video from file to variable cap
     cap = cv2.VideoCapture(cap_origin_path)
