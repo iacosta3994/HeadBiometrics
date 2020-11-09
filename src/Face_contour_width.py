@@ -31,7 +31,9 @@ def img_head_contour(img_samples_array):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
+
         contour_length = cv2.arcLength(contour, closed=False)
+
 
         if contour_length is None:
             print("contour length is none on face contour width")
@@ -59,7 +61,7 @@ def head_contour(img):
 
 
     # creates list of contours
-    contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     # grabs the largest contour
 
     contour = get_contour(contours)
