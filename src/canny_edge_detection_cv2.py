@@ -60,6 +60,7 @@ def make_sobel_face(img):
     img = cv2.dilate(img, (5, 5))
     # runs another level of dilation and then erodes it
     img = cv2.morphologyEx(img, cv2.MORPH_OPEN, (3, 3))
+    img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, (7,7))
     return img
 
 
@@ -76,8 +77,7 @@ def auto_canny_face(img, sigma=0.05):
     # Img_canny now has the canny edge image
     img = cv2.Canny(img, lower, upper)
 
-    img = cv2.dilate(img, (3, 3))
     img = cv2.morphologyEx(img, cv2.MORPH_OPEN, (7, 7))
-    img = cv2.erode(img, (7, 7))
+    img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, (7,7))
 
     return img
