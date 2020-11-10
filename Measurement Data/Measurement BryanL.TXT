@@ -1,3 +1,0 @@
-Measure 1, 41.3cm ;						
-Measure 2, 57.15cm ;						
-Measure 3, 31.75cm ;			
