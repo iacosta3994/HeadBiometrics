@@ -13,7 +13,7 @@ def get_face_detector(modelFile=None,
                       quantized=False):
     """
     Get the face detection caffe model of OpenCV's DNN module
-    
+
     Parameters
     ----------
     modelFile : string, optional
@@ -22,7 +22,7 @@ def get_face_detector(modelFile=None,
         Path to config file. The default is "models/deploy.prototxt" or "models/opencv_face_detector.pbtxt" based on quantization.
     quantization: bool, optional
         Determines whether to use quantized tf model or unquantized caffe model. The default is False.
-    
+
     Returns
     -------
     model : dnn_Net
@@ -30,23 +30,23 @@ def get_face_detector(modelFile=None,
     """
     if quantized:
         if modelFile == None:
-            modelFile = "models/opencv_face_detector_uint8.pb"
+            modelFile = "src/Proctoring_AI/models/opencv_face_detector_uint8.pb"
         if configFile == None:
-            configFile = "models/opencv_face_detector.pbtxt"
+            configFile = "src/Proctoring_AI/models/opencv_face_detector.pbtxt"
         model = cv2.dnn.readNetFromTensorflow(modelFile, configFile)
-        
+
     else:
         if modelFile == None:
-            modelFile = "models/res10_300x300_ssd_iter_140000.caffemodel"
+            modelFile = "src/Proctoring_AI/models/res10_300x300_ssd_iter_140000.caffemodel"
         if configFile == None:
-            configFile = "models/deploy.prototxt"
+            configFile = "src/Proctoring_AI/models/deploy.prototxt"
         model = cv2.dnn.readNetFromCaffe(configFile, modelFile)
     return model
 
 def find_faces(img, model):
     """
     Find the faces in an image
-    
+
     Parameters
     ----------
     img : np.uint8
@@ -92,4 +92,3 @@ def draw_faces(img, faces):
     """
     for x, y, x1, y1 in faces:
         cv2.rectangle(img, (x, y), (x1, y1), (0, 0, 255), 3)
-        
