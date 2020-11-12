@@ -14,13 +14,13 @@ def get_magstripe_demensions(img):
     # Generates a hierarchy of contours
     contours, hierarchy = cv2.findContours(img_fc, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # Detects contours with 4 sides and an aspec ratio relating to magstripe
-    mag_stripe_w_h_ar_mn_xy = detect_mag_stripe(img, contours)
+    mag_stripe_w_h_ar_mn_xy = detect_mag_stripe(contours)
     # Returns the pixel height and width with angle in mind
     return mag_stripe_w_h_ar_mn_xy
 
 
 # Narrows down the contours in search for the one that best fits
-def detect_mag_stripe(img, contours):
+def detect_mag_stripe(contours):
     magstripe_list = []
     for contour in contours:
         # Epsilon helps account for possible inperfections in shape of magstripe (Glare, off angles, or from the Blurring)
@@ -65,11 +65,10 @@ def test_draw_magstripe_contour(img, contour, magstripe_name, color=(0, 255, 0))
     cx = int(M["m10"] / M["m00"])
     cy = int(M["m01"] / M["m00"])
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    folder_check = os.path.isdir("Data")
-    if not folder_check:
-        os.makedirs("Data")
+
+
     cv2.putText(img, text=str(magstripe_name), org=(cx, cy),
                 fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0, 255, 0),
                 thickness=2, lineType=cv2.LINE_AA)
     # Creates green box to output file path
-    cv2.imwrite('Data/'+'img_' + magstripe_name + '.png', cv2.drawContours(img, [box], 0, color, 2))
+    cv2.imwrite(('img_' + magstripe_name + '.png'), cv2.drawContours(img, [box], 0, color, 2))
