@@ -81,3 +81,41 @@ def auto_canny_face(img, sigma=0.05):
     img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, (7,7))
 
     return img
+
+def get_contour(contours):
+    if len(contours) == 2:
+        contour = contours[0]
+    elif len(contours) == 3:
+        contour = contours[1]
+    else:
+        raise Exception(
+            ("contour in face_contour_width is not working as expected,findContours changed output type check opencv documentation for updates"))
+    return contour
+
+
+def head_contour(img):
+
+    img = auto_canny_face(img)
+
+    cv2.imshow('auto_canny_face', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    img = make_sobel_face(img)
+
+    cv2.imshow('make_sobel_face', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
+    # creates list of contours
+    contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    # grabs the largest contour
+
+    contour = get_contour(contours)
+    if len(contour) == 0:
+        return None , None
+
+    contour = max(contour, key = cv2.contourArea)
+
+    return contour, img
