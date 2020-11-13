@@ -2,10 +2,10 @@ import os
 import cv2
 import uuid
 import numpy as np
-from src.canny_edge_detection_cv2 import *
+from src.canny_edge_detection_cv2 import head_contour
 
 
-def img_head_contour(img_samples_array):
+def img_head_contour_array(img_samples_array):
     main_canny = None
     main_contour = None
     main_contour_length = None
@@ -27,7 +27,7 @@ def img_head_contour(img_samples_array):
             continue
 
         cv2.drawContours(img_duplicate, contour, -1, (0,255,0), 3)
-        cv2.imshow('Contours', img_duplicate)
+        cv2.imshow('Contours', img_canny)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -48,37 +48,40 @@ def img_head_contour(img_samples_array):
 
     if main_canny is None and main_contour is None and main_contour_length is None:
         print("no return values found")
-    return main_canny, main_contour, main_contour_length
+    return  main_contour, main_contour_length
+
 
 # outputs the contour of the head
 
+def img_head_contour(img):
+    main_canny = None
+    main_contour = None
+    main_contour_length = None
 
-def head_contour(img):
+    img_duplicate = img.copy()
 
-    img = auto_canny_face(img, sigma=.22)
+    if len(img.shape) == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
-    img = make_sobel_face(img)
+    contour, img_canny = head_contour(img)
 
-
-    # creates list of contours
-    contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    # grabs the largest contour
-
-    contour = get_contour(contours)
-    if len(contour) == 0:
-        return None , None
-
-    contour = max(contour, key = cv2.contourArea)
-
-    return contour, img
+    cv2.drawContours(img_duplicate, contour, -1, (0,255,0), 3)
+    cv2.imshow('Contours', img_canny)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
-def get_contour(contours):
-    if len(contours) == 2:
-        contour = contours[0]
-    elif len(contours) == 3:
-        contour = contours[1]
-    else:
-        raise Exception(
-            ("contour in face_contour_width is not working as expected,findContours changed output type check opencv documentation for updates"))
-    return contour
+    contour_length = cv2.arcLength(contour, closed=False)
+
+
+
+
+    if main_contour_length is None or contour_length > main_contour_length:
+        main_canny = img_canny
+        main_contour = contour
+        main_contour_length = contour_length
+    
+
+    if main_canny is None and main_contour is None and main_contour_length is None:
+        print("no return values found")
+    return  main_contour, main_contour_length
