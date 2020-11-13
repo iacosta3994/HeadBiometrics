@@ -12,16 +12,12 @@ from src.contour_width_max import ret_contour_width
 
 
 def front_mm_metrics(path):
+
     img_array = split_frames(path)
+
     pixel_mm = video_to_pixel_mm(img_array)
-    
 
     narrow_head_img = narrowest_img(img_array)
-
-
-    cv2.imshow('narrow_head_img=', narrow_head_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
 
     main_contour, main_contour_length = img_head_contour(narrow_head_img)
 
@@ -29,6 +25,4 @@ def front_mm_metrics(path):
 
     head_width_mm = int(ret_contour_width(main_contour) * pixel_mm[0])
 
-    # cv2.imwrite("results.jpg",narrow_head_img)
-    #cv2.imwrite("canny_image.jpg", main_canny)
     return ear_to_ear_mm, head_width_mm
