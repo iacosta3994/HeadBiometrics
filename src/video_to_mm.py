@@ -60,8 +60,7 @@ def video_to_pixel_mm(split_frame_array):
     mag_stripe_w_h = []
     pixel_mm_mean_list = []
     #dp_magdp_list = []
-    xy_cordinates = []
-
+    
     for mag_stripe_w_h_area_ratio_magname in list_mag_stripe_filtered:
 
         if 0.08981481481 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.095:
@@ -71,7 +70,6 @@ def video_to_pixel_mm(split_frame_array):
                 mag_stripe_constant_w_h_2[0]**2 + mag_stripe_constant_w_h_2[1]**2)
             ppmm = magstripe_diag/dp
             #dp_magdp_list.append([dp, magstripe_diag])
-            xy_cordinates.append(mag_stripe_w_h_area_ratio_magname[5])
             pixel_mm_mean_list.append([ppmm])
 
         elif 0.095 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.102666585:
@@ -81,7 +79,6 @@ def video_to_pixel_mm(split_frame_array):
                 mag_stripe_constant_w_h_2[0]**2 + mag_stripe_constant_w_h_2[1]**2)
             ppmm = magstripe_diag/dp
             #dp_magdp_list.append([dp, magstripe_diag])
-            xy_cordinates.append(mag_stripe_w_h_area_ratio_magname[5])
             pixel_mm_mean_list.append([ppmm])
 
         elif 0.12314814814 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.1385:
@@ -91,7 +88,6 @@ def video_to_pixel_mm(split_frame_array):
                 mag_stripe_constant_w_h_3[0]**2 + mag_stripe_constant_w_h_3[1]**2)
             ppmm = magstripe_diag/dp
             #dp_magdp_list.append([dp, magstripe_diag])
-            xy_cordinates.append(mag_stripe_w_h_area_ratio_magname[5])
             pixel_mm_mean_list.append([ppmm])
 
         elif 0.1386 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.1573:
@@ -101,7 +97,6 @@ def video_to_pixel_mm(split_frame_array):
                 mag_stripe_constant_w_h_4[0]**2 + mag_stripe_constant_w_h_4[1]**2)
             ppmm = magstripe_diag/dp
             #dp_magdp_list.append([dp, magstripe_diag])
-            xy_cordinates.append(mag_stripe_w_h_area_ratio_magname[5])
             pixel_mm_mean_list.append([ppmm])
 
         else:
@@ -119,13 +114,9 @@ def video_to_pixel_mm(split_frame_array):
             for ppmm in pixel_mm_mean_list:
                 file_txt.write(str(ppmm) + ' ' + '\n') '''
 
-    x_std_filter = std_filter(xy_cordinates, 0,  deviations_count=0.7)
-    xy_cordinates = remove_nested_with_idx(xy_cordinates, x_std_filter, 0)
 
-    y_std_filter = std_filter(xy_cordinates, 1,   deviations_count=0.7)
-    xy_cordinates = remove_nested_with_idx(xy_cordinates, y_std_filter, 1)
 
     pixel_mm_filter = std_filter(pixel_mm_mean_list, 0, deviations_count=1)
     pixel_mm_filtered = remove_nested_with_idx(pixel_mm_mean_list, pixel_mm_filter, 0)
 
-    return max(pixel_mm_filtered), np.mean(xy_cordinates, axis=0)
+    return max(pixel_mm_filtered)
