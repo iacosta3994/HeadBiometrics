@@ -1,9 +1,12 @@
 import sys
 import cv2
+import numpy as np
 
 from src.Proctoring_AI.face_detector import get_face_detector, find_faces
 from src.Proctoring_AI.face_landmarks import get_landmark_model, detect_marks
-from src.Proctoring_AI.head_pose_estimation import *
+from src.Proctoring_AI.head_pose_estimation import head_pose_points
+
+from src.face_detect_auto_crop import crop_above_eyes
 
 
 
@@ -88,9 +91,9 @@ def narrowest_img(img_array):
                     fin_img = img
                     fin_img_eyes_xy = (image_points[3])
 
+    fin_img = crop_above_eyes(fin_img, fin_img_eyes_xy)
 
-
-    return fin_img, fin_img_eyes_xy
+    return fin_img
 
 
 
