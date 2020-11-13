@@ -38,268 +38,28 @@ def face_detect_auto_crop(img, save_result):
         return final_img
 
 
-def crop_above_eyes(img, mag_xy):
+def crop_above_eyes(img, eye_xy):
     if img is None:
         print("Image not loaded to crop")
         return None
-    # cascades for left amd right eye
 
-    left_eye = left_eye_cascade.detectMultiScale(img, 1.05, 4)
-    right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 4)
+    eye_x, eye_y = eye_xy
 
+    height, width = img.shape[:2]
 
     img_candidates = []
     img_orientation = []
 
+    above_eyes = eye_y
+    beginX = 0
+    endX = int(width)
+    beginY = 0
+    endY = int(eye_y)
+    top_img = img[beginY:endY, beginX:endX]
+    img_candidates.append(top_img)
 
 
-
-
-
-
-
-
-
-    (mag_x, mag_y) = mag_xy
-
-    # adapting H W for each image
-    height, width = img.shape[:2]
-    while len(img_candidates)== 0:
-        if (type(left_eye).__module__ == np.__name__) and (type(right_eye).__module__ == np.__name__):
-            # X Y W H cordinates for each eye, Magstripe brought from get Magstripe
-
-            for (lex, ley, lew, leh) in left_eye:
-                for (rex, rey, rew, reh) in right_eye:
-
-                    # Magstripe position is to the right than both eyes
-                    if mag_x > lex and mag_x > rex:
-                        if ley > mag_y > rey:
-                            above_eyes = round(((lex + rex) / 2) - (leh + reh / 4))
-                            beginX = 0
-                            endX = above_eyes
-                            beginY = 0
-                            endY = height
-                            top_img = img[beginY:endY, beginX:endX]
-                            img_candidates.append(top_img)
-                            img_orientation.append([beginY,endY, beginX,endX])
-                            break
-                    # Magstripe is between both eyes and is below it
-                    elif lex < mag_x < rex:
-                        if mag_y > lex and mag_y > rex:
-                            above_eyes = round(((ley + rey) / 2) - (leh + reh / 4))
-                            beginX = 0
-                            endX = width
-                            beginY = 0
-                            endY = above_eyes
-                            top_img = img[beginY:endY, beginX:endX]
-                            img_candidates.append(top_img)
-                            img_orientation.append([beginY,endY, beginX,endX])
-                            break
-
-                    # Magstripe position is on the left side of both eyes
-                    elif mag_x < lex and mag_x > rex:
-                        if rey > mag_y > ley:
-                            above_eyes = round(((lex + rex) / 2) + (leh + reh / 4))
-                            beginX = above_eyes
-                            endX = width
-                            beginY = 0
-                            endY = height
-                            top_img = img[beginY:endY, beginX:endX]
-                            img_candidates.append(top_img)
-                            img_orientation.append([beginY,endY, beginX,endX])
-                            break
-                    # Magstripe is between both eyes but is above it
-                    elif lex < mag_x < rex:
-                        if mag_y < ley and mag_y < rey:
-                            above_eyes = round(((ley + rey)/2) + (leh + reh / 4))
-                            beginX = 0
-                            endX = width
-                            beginY = above_eyes
-                            endY = height
-                            top_img = img[beginY:endY, beginX:endX]
-                            img_candidates.append(top_img)
-                            img_orientation.append([beginY,endY, beginX,endX])
-                            break
-
-
-        elif (type(left_eye).__module__ != np.__name__) or (type(right_eye).__module__ != np.__name__):
-            left_eye = left_eye_cascade.detectMultiScale(img, 1.05, 4)
-            right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 4)
-            if (type(left_eye).__module__ == np.__name__) and (type(right_eye).__module__ == np.__name__):
-
-                for (lex, ley, lew, leh) in left_eye:
-                    for (rex, rey, rew, reh) in right_eye:
-
-                        # Magstripe position is to the right than both eyes
-                        if mag_x > lex and mag_x > rex:
-                            if ley > mag_y > rey:
-                                above_eyes = round(((lex + rex) / 2) - (leh + reh / 4))
-                                beginX = 0
-                                endX = above_eyes
-                                beginY = 0
-                                endY = height
-                                top_img = img[beginY:endY, beginX:endX]
-                                img_candidates.append(top_img)
-                                img_orientation.append([beginY,endY, beginX,endX])
-                                break
-                        # Magstripe is between both eyes and is below it
-                        elif lex < mag_x < rex:
-                            if mag_y > lex and mag_y > rex:
-                                above_eyes = round(((ley + rey) / 2) - (leh + reh / 4))
-                                beginX = 0
-                                endX = width
-                                beginY = 0
-                                endY = above_eyes
-                                top_img = img[beginY:endY, beginX:endX]
-                                img_candidates.append(top_img)
-                                img_orientation.append([beginY,endY, beginX,endX])
-                                break
-                        # Magstripe position is on the left side of both eyes
-                        elif mag_x < lex and mag_x > rex:
-                            if rey > mag_y > ley:
-                                above_eyes = round(((lex + rex) / 2) + (leh + reh / 4))
-                                beginX = above_eyes
-                                endX = width
-                                beginY = 0
-                                endY = height
-                                top_img = img[beginY:endY, beginX:endX]
-                                img_candidates.append(top_img)
-                                img_orientation.append([beginY,endY, beginX,endX])
-                                break
-                        # Magstripe is between both eyes but is above it
-                        elif lex < mag_x < rex:
-                            if mag_y < ley and mag_y < rey:
-                                above_eyes = round(((ley + rey)/2) + (leh + reh / 4))
-                                beginX = 0
-                                endX = width
-                                beginY = above_eyes
-                                endY = height
-                                top_img = img[beginY:endY, beginX:endX]
-                                img_candidates.append(top_img)
-                                img_orientation.append([beginY,endY, beginX,endX])
-                                break
-
-            elif (type(left_eye).__module__ != np.__name__) or (type(right_eye).__module__ != np.__name__):
-                left_eye = left_eye_cascade.detectMultiScale(img, 1.05, 3)
-                right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 3)
-                if (type(left_eye).__module__ == np.__name__) and (type(right_eye).__module__ == np.__name__):
-
-                    for (lex, ley, lew, leh) in left_eye:
-                        for (rex, rey, rew, reh) in right_eye:
-
-                            # Magstripe position is to the right than both eyes
-                            if mag_x > lex and mag_x > rex:
-                                if ley > mag_y > rey:
-                                    above_eyes = round((lex + rex) / 2) - (leh + reh / 4)
-                                    beginX = 0
-                                    endX = above_eyes
-                                    beginY = 0
-                                    endY = height
-                                    top_img = img[beginY:endY, beginX:endX]
-                                    img_candidates.append(top_img)
-                                    img_orientation.append([beginY,endY, beginX,endX])
-                                    break
-                            # Magstripe is between both eyes and is below it
-                            elif lex < mag_x < rex:
-                                if mag_y > lex and mag_y > rex:
-                                    above_eyes = round((ley + rey) / 2) - (leh + reh / 4)
-                                    beginX = 0
-                                    endX = width
-                                    beginY = 0
-                                    endY = above_eyes
-                                    top_img = img[beginY:endY, beginX:endX]
-                                    img_candidates.append(top_img)
-                                    img_orientation.append([beginY,endY, beginX,endX])
-                                    break
-                            # Magstripe position is on the left side of both eyes
-                            elif mag_x < lex and mag_x > rex:
-                                if rey > mag_y > ley:
-                                    above_eyes = round((lex + rex) / 2) + (leh + reh / 4)
-                                    beginX = above_eyes
-                                    endX = width
-                                    beginY = 0
-                                    endY = height
-                                    top_img = img[beginY:endY, beginX:endX]
-                                    img_candidates.append(top_img)
-                                    img_orientation.append([beginY,endY, beginX,endX])
-                                    break
-                            # Magstripe is between both eyes but is above it
-                            elif lex < mag_x < rex:
-                                if mag_y < ley and mag_y < rey:
-                                    above_eyes = round((ley + rey)/2) + (leh + reh / 4)
-                                    beginX = 0
-                                    endX = width
-                                    beginY = above_eyes
-                                    endY = height
-                                    top_img = img[beginY:endY, beginX:endX]
-                                    img_candidates.append(top_img)
-                                    img_orientation.append([beginY,endY, beginX,endX])
-                                    break
-
-
-                elif (type(left_eye).__module__ != np.__name__) or (type(right_eye).__module__ != np.__name__):
-                    left_eye = left_eye_cascade.detectMultiScale(img, 1.05, 2)
-                    right_eye = right_eye_cascade.detectMultiScale(img, 1.05, 2)
-                    if (type(left_eye).__module__ == np.__name__) and (type(right_eye).__module__ == np.__name__):
-                        (mag_x, mag_y) = mag_xy
-                        for (lex, ley, lew, leh) in left_eye:
-                            for (rex, rey, rew, reh) in right_eye:
-
-                                # Magstripe position is to the right than both eyes
-                                if mag_x > lex and mag_x > rex:
-                                    if ley > mag_y > rey:
-                                        above_eyes = round((lex + rex) / 2) - (leh + reh / 4)
-                                        beginX = 0
-                                        endX = above_eyes
-                                        beginY = 0
-                                        endY = height
-                                        top_img = img[beginY:endY, beginX:endX]
-                                        img_candidates.append(top_img)
-                                        img_orientation.append([beginY,endY, beginX,endX])
-                                        break
-                                # Magstripe is between both eyes and is below it
-                                elif lex < mag_x < rex:
-                                    if mag_y > lex and mag_y > rex:
-                                        above_eyes = round((ley + rey) / 2) - (leh + reh / 4)
-                                        beginX = 0
-                                        endX = width
-                                        beginY = 0
-                                        endY = above_eyes
-                                        top_img = img[beginY:endY, beginX:endX]
-                                        img_candidates.append(top_img)
-                                        img_orientation.append([beginY,endY, beginX,endX])
-                                        break
-                                # Magstripe position is on the left side of both eyes
-                                elif mag_x < lex and mag_x > rex:
-                                    if rey > mag_y > ley:
-                                        above_eyes = round((lex + rex) / 2) + (leh + reh / 4)
-                                        beginX = above_eyes
-                                        endX = width
-                                        beginY = 0
-                                        endY = height
-                                        top_img = img[beginY:endY, beginX:endX]
-                                        img_candidates.append(top_img)
-                                        img_orientation.append([beginY,endY, beginX,endX])
-                                        break
-                                # Magstripe is between both eyes but is above it
-                                elif lex < mag_x < rex:
-                                    if mag_y < ley and mag_y < rey:
-                                        above_eyes = round((ley + rey)/2) + (leh + reh / 4)
-                                        beginX = 0
-                                        endX = width
-                                        beginY = above_eyes
-                                        endY = height
-                                        top_img = img[beginY:endY, beginX:endX]
-                                        img_candidates.append(top_img)
-                                        img_orientation.append([beginY,endY, beginX,endX])
-                                        break
-
-        else:
-            print("no face detected")
-            print(len(img_candidates))
-            break
-
-    return img_candidates , img_orientation
+    return img_candidates
 
 
 def crop_above_eyes_w_recursion(img, mag_xy):
