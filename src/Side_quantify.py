@@ -40,11 +40,11 @@ def point_return(img):
     return points[-2], points[-1]
 
 
-def side_mm_metrics(path, img_orientation):
+def side_mm_metrics(path):
     img_array = split_frames(path)
     pixel_mm, mag_xy = video_to_pixel_mm(img_array)
 
-    side_head_img = widest_img(img_array, img_orientation)
+    side_head_img = widest_img(img_array)
     if side_head_img is None:
         print("side_head_img is None")
     else:
