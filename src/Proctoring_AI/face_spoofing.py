@@ -26,7 +26,7 @@ def calc_hist(img):
     return np.array(histogram)
 
 face_model = get_face_detector()
-clf = joblib.load('models/face_spoofing.pkl')
+clf = joblib.load('src/Proctoring_AI/models/face_spoofing.pkl')
 cap = cv2.VideoCapture(0)
 
 sample_number = 1
@@ -40,10 +40,10 @@ while True:
     measures[count%sample_number]=0
     height, width = img.shape[:2]
     for x, y, x1, y1 in faces:
-        
+
         roi = img[y:y1, x:x1]
         point = (0,0)
-        
+
         img_ycrcb = cv2.cvtColor(roi, cv2.COLOR_BGR2YCR_CB)
         img_luv = cv2.cvtColor(roi, cv2.COLOR_BGR2LUV)
 
@@ -74,10 +74,10 @@ while True:
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 cv2.putText(img=img, text=text, org=point, fontFace=font, fontScale=0.9,
                             color=(0, 255, 0), thickness=2, lineType=cv2.LINE_AA)
-        
+
     count+=1
     cv2.imshow('img_rgb', img)
-    
+
     if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
