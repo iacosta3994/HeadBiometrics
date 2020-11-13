@@ -68,7 +68,7 @@ def find_faces(img, model):
     faces = []
     for i in range(res.shape[2]):
         confidence = res[0, 0, i, 2]
-        if confidence > 0.5:
+        if confidence > 0.65:
             box = res[0, 0, i, 3:7] * np.array([w, h, w, h])
             (x, y, x1, y1) = box.astype("int")
             faces.append([x, y, x1, y1])
