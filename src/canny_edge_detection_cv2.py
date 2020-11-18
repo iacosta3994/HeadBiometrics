@@ -1,5 +1,7 @@
-import numpy as np
 import cv2
+import argparse
+import numpy as np
+from src.HED_model.edge_detection import CropLayer, args
 
 # Function will load frame from file_path and will save canny edge image in same directory with new name
 
@@ -64,21 +66,12 @@ def make_sobel_face(img):
     return img
 
 
-def auto_canny_face(img, sigma=0.05):
+def auto_canny_face(img, sigma = 0.55):
 
-    img = cv2.GaussianBlur(img, (5, 5), 0)
-    # Gets median value of channel intensity | unique for each image
-    v = np.median(img)
-    # Sets lower int valeue for canny function
-    lower = int(max(0, (1.0 - sigma) * v))
-    # Sets higher int value for canny function
-    upper = int(min(255, (1.0 + sigma) * v))
+    img = cv2.GaussianBlur(img, (3,3), 0)
 
-    # Img_canny now has the canny edge image
-    img = cv2.Canny(img, lower, upper)
+    img = auto_canny(img, sigma)
 
-    img = cv2.morphologyEx(img, cv2.MORPH_OPEN, (7, 7))
-    img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, (7,7))
 
     return img
 
@@ -95,21 +88,69 @@ def get_contour(contours):
 
 def head_contour(img):
 
-    img = auto_canny_face(img)
 
-    cv2.imshow('auto_canny_face', img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    img = make_sobel_face(img)
-
-    cv2.imshow('make_sobel_face', img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
 
 
     # creates list of contours
-    contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # grabs the largest contour
+
+
+
+    contour = get_contour(contours)
+
+
+    if len(contour) == 0:
+        return None , None
+
+    contour = max(contour, key = cv2.contourArea)
+
+    return contour, img
+
+
+def neural_edge_detection(frame, ret_contour = True):
+
+
+    cv2.dnn_registerLayer('Crop', CropLayer)
+    # Load the model.
+    net = cv2.dnn.readNet(args.prototxt, args.caffemodel)
+
+    frame = cv2.GaussianBlur(frame, (9,9), 0)
+
+    inp = cv2.dnn.blobFromImage(frame, scalefactor=1.0, size=(args.width, args.height),
+                               mean=(104.00698793, 116.66876762, 122.67891434),
+                               swapRB=False, crop=False)
+    net.setInput(inp)
+    out = net.forward()
+    out = out[0, 0]
+    out = cv2.resize(out, (frame.shape[1], frame.shape[0]))
+    out = 255 * out
+    out = out.astype(np.uint8)
+
+    cv2.imshow('NED', out)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    kernel = np.ones((15,15), np.uint8)
+    out = cv2.morphologyEx(out, cv2.MORPH_OPEN, kernel)
+    iterations = 1
+    out = cv2.erode(out, kernel, iterations)
+
+    cv2.imshow('erode', out)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    if ret_contour is True:
+        contour, out = head_contour(out)
+        return contour, out
+
+
+    return out
+
+    '''
+    out = auto_canny(out, sigma=0.99)
+
+    contours = cv2.findContours(out, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     # grabs the largest contour
 
     contour = get_contour(contours)
@@ -117,5 +158,4 @@ def head_contour(img):
         return None , None
 
     contour = max(contour, key = cv2.contourArea)
-
-    return contour, img
+    '''
