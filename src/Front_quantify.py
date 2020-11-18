@@ -6,7 +6,6 @@ import cv2
 from src.key_frame_extraction import split_frames
 from src.video_to_mm import video_to_pixel_mm
 from src.narrow_wide_img_select import narrowest_img
-
 from src.face_contour_width import img_head_contour
 from src.contour_width_max import ret_contour_width
 
