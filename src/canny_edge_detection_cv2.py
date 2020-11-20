@@ -88,14 +88,9 @@ def get_contour(contours):
 
 def head_contour(img):
 
-
-
-
     # creates list of contours
     contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # grabs the largest contour
-
-
 
     contour = get_contour(contours)
 
@@ -127,35 +122,16 @@ def neural_edge_detection(frame, ret_contour = True):
     out = 255 * out
     out = out.astype(np.uint8)
 
-    cv2.imshow('NED', out)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
     kernel = np.ones((15,15), np.uint8)
     out = cv2.morphologyEx(out, cv2.MORPH_OPEN, kernel)
     iterations = 1
     out = cv2.erode(out, kernel, iterations)
 
-    cv2.imshow('erode', out)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
 
     if ret_contour is True:
+        outcopy = out.copy()
         contour, out = head_contour(out)
-        return contour, out
+        return contour, outcopy
 
 
     return out
-
-    '''
-    out = auto_canny(out, sigma=0.99)
-
-    contours = cv2.findContours(out, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    # grabs the largest contour
-
-    contour = get_contour(contours)
-    if len(contour) == 0:
-        return None , None
-
-    contour = max(contour, key = cv2.contourArea)
-    '''
