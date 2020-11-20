@@ -2,67 +2,65 @@ import os
 import cv2
 import uuid
 import numpy as np
-from src.canny_edge_detection_cv2 import neural_edge_detection
+from src.canny_edge_detection_cv2 import neural_edge_detection, auto_canny, make_sobel_face
+from src.keep_above_points import keep_img_above_points
 
 
-def img_head_contour_array(img_samples_array):
-    main_canny = None
-    main_contour = None
-    main_contour_length = None
-
-    if len(img_samples_array) == 0:
-        print("Can't open sample array")
-        return main_canny, main_contour, main_contour_length
-
-    for img in img_samples_array:
-
-        img_duplicate = img.copy()
-
-        if len(img.shape) == 2:
-            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-
-        contour, img_canny = neural_edge_detection(img, ret_contour=True)
-
-        if contour is None:
-            continue
-
-        cv2.drawContours(img_duplicate, contour, -1, (0,255,0), 3)
-        cv2.imshow('Contours', img_canny)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+def get_contour(contours):
+    if len(contours) == 2:
+        contour = contours[0]
+    elif len(contours) == 3:
+        contour = contours[1]
+    else:
+        raise Exception(
+            ("contour in face_contour_width is not working as expected,findContours changed output type check opencv documentation for updates"))
+    return contour
 
 
-        contour_length = cv2.arcLength(contour, closed=False)
+def head_contour(img):
+
+    img = auto_canny_face(img, sigma=.22)
+
+    img = make_sobel_face(img)
 
 
-        if contour_length is None:
-            print("contour length is none on face contour width")
-            continue
+    # creates list of contours
+    contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    # grabs the largest contour
 
-        if main_contour_length is None or contour_length > main_contour_length:
-            main_canny = img_canny
-            main_contour = contour
-            main_contour_length = contour_length
-        else:
-            continue
+    contour = get_contour(contours)
+    if len(contour) == 0:
+        return None , None
 
-    if main_canny is None and main_contour is None and main_contour_length is None:
-        print("no return values found")
-    return  main_contour, main_contour_length
+    contour = max(contour, key = cv2.contourArea)
 
+    return contour, img
 
-# outputs the contour of the head
+def img_head_contour_side(img, pointA, pointB, ret_contour = True):
+    if len(img.shape) == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
-def img_head_contour(img):
+    __, img_canny = neural_edge_detection(img, ret_contour=True)
+
+    top_img = keep_img_above_points(img_canny, pointA, pointB)
+    contour, img_canny = head_contour(top_img)
+    contour_length = cv2.arcLength(contour, closed=False)
+    contour_length = contour_length / 2
+
+    if ret_contour == True:
+        return  contour, contour_length
+    else:
+        return contour_length, img_canny
+
+def img_head_contour_front(img, ret_contour = True):
     if len(img.shape) == 2:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
     contour, img_canny = neural_edge_detection(img, ret_contour=True)
-    img_duplicate = img_canny.copy()
-    cv2.drawContours(img_duplicate, contour, -1, (0,255,0), 3)
-    cv2.imshow('head contour', img_canny)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+
     contour_length = cv2.arcLength(contour, closed=False)
 
-    return  contour, contour_length
+    if ret_contour == True:
+        return  contour, contour_length
+    else:
+        return contour_length, img_canny
