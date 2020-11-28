@@ -1,17 +1,9 @@
-
-import os
-import sys
 import numpy as np
-import matplotlib
 import cv2
-from operator import truediv
-from src.key_frame_extraction import *
-from src.canny_edge_detection_cv2 import *
-from src.mag_stripe_search import *
-from src.face_detect_auto_crop import *
-from src.print_img_demensions import *
+from src.canny_edge_detection_cv2 import make_canny_magstripe
+from src.mag_stripe_search import get_magstripe_demensions
 from src.standard_dev_filter import std_filter
-from src.remove_nested import *
+from src.remove_nested import remove_nested_with_idx
 
 
 # Funtion that inputs video mp4, name of scene with location, variable to determine how many frames to splice
@@ -30,7 +22,7 @@ def video_to_pixel_mm(split_frame_array):
             # Canny function for magstripe benchmark
             canny_image = make_canny_magstripe(frame)
 
-            # canny_image var is then used with get_magstripe_demensions
+            # canny_image is then used with get_magstripe_demensions
             frame_mag_stripe_w_h_ar_mn_xy_list = get_magstripe_demensions(canny_image)
 
             for mag_stripe_w_h_area_ratio_magname in frame_mag_stripe_w_h_ar_mn_xy_list:
@@ -43,11 +35,11 @@ def video_to_pixel_mm(split_frame_array):
 
             # Once all the frames have been processed continue below
 
-    area_std_filter_list = std_filter(list_mag_stripe_w_h_area_ratio_magname, 2, .5)
+    area_std_filter_list = std_filter(list_mag_stripe_w_h_area_ratio_magname, 2, 3)
     list_mag_stripe_filtered = remove_nested_with_idx(
         list_mag_stripe_w_h_area_ratio_magname, area_std_filter_list, 2)
 
-    aspr_std_filter_list = std_filter(list_mag_stripe_filtered, 3, 2)
+    aspr_std_filter_list = std_filter(list_mag_stripe_filtered, 3, 3)
     list_mag_stripe_filtered = remove_nested_with_idx(
         list_mag_stripe_filtered, aspr_std_filter_list, 3)
 
@@ -60,7 +52,7 @@ def video_to_pixel_mm(split_frame_array):
     mag_stripe_w_h = []
     pixel_mm_mean_list = []
     #dp_magdp_list = []
-    
+
     for mag_stripe_w_h_area_ratio_magname in list_mag_stripe_filtered:
 
         if 0.08981481481 <= mag_stripe_w_h_area_ratio_magname[3] <= 0.095:
@@ -116,7 +108,7 @@ def video_to_pixel_mm(split_frame_array):
 
 
 
-    pixel_mm_filter = std_filter(pixel_mm_mean_list, 0, deviations_count=1)
+    pixel_mm_filter = std_filter(pixel_mm_mean_list, 0, deviations_count=3)
     pixel_mm_filtered = remove_nested_with_idx(pixel_mm_mean_list, pixel_mm_filter, 0)
 
-    return max(pixel_mm_filtered)
+    return min(pixel_mm_filtered)
