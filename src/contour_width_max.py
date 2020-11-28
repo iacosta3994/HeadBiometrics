@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 
-
 def ret_contour_width(contour):
     # Builds a box around the inputed contour
     box = cv2.minAreaRect(contour)
@@ -23,4 +22,5 @@ def ret_contour_width(contour):
     max_list.append(max(top_max))
     max_list.append(max(bottom_max))
 
-    return max(max_list)
+    dilation_offset = .8333 * max(max_list)
+    return dilation_offset
