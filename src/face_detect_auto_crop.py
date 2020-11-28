@@ -1,10 +1,3 @@
-import cv2
-import sys
-import os
-import numpy as np
-
-
-
 
 def crop_above_eyes(img, eye_xy):
     if img is None:
