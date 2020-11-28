@@ -1,16 +1,12 @@
 import cv2
-import os
 import numpy as np
-from PIL import Image, ExifTags
-
 
 # Function splits incoming mp4 and returns
-def split_frames(cap_origin_path):
+def split_frames(cap_origin_path, ios = False):
 
 
     # Assigning video from file to variable cap
     cap = cv2.VideoCapture(cap_origin_path)
-    # Starting with the first{0} frame
 
     images = []
 
@@ -24,9 +20,13 @@ def split_frames(cap_origin_path):
 
             height, width, _ = frame.shape
             if height < width:
-                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                if ios == True:
+                    #rotates clockwise for ios
+                    frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
 
-
+                else:
+                # Rotates frame to portrait mode for android
+                    frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
             # Adds frame to list
             images.append(frame)
