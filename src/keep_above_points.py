@@ -1,7 +1,7 @@
 import cv2
 import argparse
 import numpy as np
-from src.canny_edge_detection_cv2 import neural_edge_detection
+from src.canny_edge_detection_cv2 import auto_canny_face, make_sobel_face, neural_edge_detection
 
 
 def keep_img_above_points(img, pointA, pointB):
@@ -18,22 +18,17 @@ def keep_img_above_points(img, pointA, pointB):
 
     (imgy, imgx, imgc) = img.shape
 
-    img_canny = neural_edge_detection(img, ret_contour = False)
+    img = auto_canny_face(img)
+    img = make_sobel_face(img)
 
     if len(img.shape) == 2:
-        img_canny = cv2.cvtColor(img_canny, cv2.COLOR_GRAY2BGR)
-
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
     for x in np.arange(0, imgx):
         for y in np.arange(min(y1,y2), imgy):
 
             if y > m*x + c:
-
-                img_canny[y][x] = [0, 0, 0]
-
-    cv2.imshow('keep_above_points', img_canny)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+                img[y][x] = [0, 0, 0]
 
 
-    return img_canny
+    return img
