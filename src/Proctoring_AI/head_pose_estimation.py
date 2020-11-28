@@ -123,7 +123,7 @@ def head_pose_points(img, rotation_vector, translation_vector, camera_matrix):
     x = point_2d[2]
 
     return (x, y)
-    
+
 '''
 face_model = get_face_detector()
 landmark_model = get_landmark_model()
