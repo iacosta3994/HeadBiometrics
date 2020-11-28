@@ -1,5 +1,4 @@
 import cv2
-import argparse
 import numpy as np
 from src.HED_model.edge_detection import CropLayer, args
 
@@ -9,14 +8,14 @@ from src.HED_model.edge_detection import CropLayer, args
 def make_canny_magstripe(img):
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # Blurring to reduce artifacts
-    blurred_img = cv2.GaussianBlur(gray_img, (7, 7), 0)
+    blurred_img = cv2.GaussianBlur(gray_img, (5, 5), 0)
     clahe = cv2.createCLAHE()  # Contrast Limited Adaptive Histogram Equalization
     # Adjsuts contrast in image to allow maggstripe to be darker for images with high gamma
     clahe_img = clahe.apply(blurred_img)
     # 35 works well Sets a threshold in search for the pixels near the color of black i.e magstripe
-    ret, thresh1 = cv2.threshold(clahe_img, 35, 255, cv2.THRESH_BINARY)
+    ret, thresh1 = cv2.threshold(clahe_img, 85, 255, cv2.THRESH_BINARY)
     # Create edges around  image with auto min and max values
-    img_canny = auto_canny(thresh1)
+    img_canny = cv2.Canny(thresh1, 85, 255)
     # Sets a kernal 3*3 used for canny img_canny_dilation
     kernel = np.ones((3, 3), np.uint8)
     img_canny_dilation = cv2.dilate(img_canny, kernel, iterations=1)
@@ -50,9 +49,9 @@ def make_sobel_face(img):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # makes the gradient using x and y axis
-    grad_x = cv2.Sobel(img, ddepth, 1, 0, ksize=5, scale=scale,
+    grad_x = cv2.Sobel(img, ddepth, 1, 0, ksize=11, scale=scale,
                        delta=delta, borderType=cv2.BORDER_DEFAULT)
-    grad_y = cv2.Sobel(img, ddepth, 0, 1, ksize=5, scale=scale,
+    grad_y = cv2.Sobel(img, ddepth, 0, 1, ksize=9, scale=scale,
                        delta=delta, borderType=cv2.BORDER_DEFAULT)
     # this section prepares it to combine together
     abs_grad_x = cv2.convertScaleAbs(grad_x)
@@ -61,7 +60,7 @@ def make_sobel_face(img):
     # the white pixels are expanded to company any contours that are seperated
     img = cv2.dilate(img, (5, 5))
     # runs another level of dilation and then erodes it
-    img = cv2.morphologyEx(img, cv2.MORPH_OPEN, (3, 3))
+    img = cv2.morphologyEx(img, cv2.MORPH_OPEN, (5, 5))
     img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, (7,7))
     return img
 
@@ -89,7 +88,7 @@ def get_contour(contours):
 def head_contour(img):
 
     # creates list of contours
-    contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     # grabs the largest contour
 
     contour = get_contour(contours)
@@ -133,5 +132,5 @@ def neural_edge_detection(frame, ret_contour = True):
         contour, out = head_contour(out)
         return contour, outcopy
 
-
-    return out
+    else:
+        return out
