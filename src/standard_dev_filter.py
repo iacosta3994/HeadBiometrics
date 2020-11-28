@@ -1,7 +1,6 @@
 import numpy as np
 import statistics
 
-
 # [[number,number,number], [number, number,number]...]
 def std_filter(list, idx, deviations_count=2):
     idx_pool = []
