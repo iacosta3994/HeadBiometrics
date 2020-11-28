@@ -1,5 +1,6 @@
 import sys
 import cv2
+import math
 import numpy as np
 
 from src.Proctoring_AI.face_detector import get_face_detector, find_faces
@@ -47,7 +48,7 @@ def narrowest_img(img_array):
         faces = find_faces(img, face_model)
         for face in faces:
             marks = detect_marks(img, landmark_model, face)
-            # mark_detector.draw_marks(img, marks, color=(0, 255, 0))
+
             image_points = np.array([
                                     marks[30],     # Nose tip
                                     marks[8],     # Chin
@@ -74,13 +75,13 @@ def narrowest_img(img_array):
                 m = (p2[1] - p1[1])/(p2[0] - p1[0])
                 ang1 = int(math.degrees(math.atan(m)))
             except:
-                ang1 = 90
+                continue
 
             try:
                 m = (x2[1] - x1[1])/(x2[0] - x1[0])
                 ang2 = int(math.degrees(math.atan(-1/m)))
             except:
-                ang2 = 90
+                continue
 
 
 
@@ -89,7 +90,15 @@ def narrowest_img(img_array):
                     fin_ang1 = ang1
                     fin_ang2 = ang2
                     fin_img = img
+
                     fin_img_eyes_xy = (image_points[3])
+
+                    (xA, yA) = (image_points[3])
+                    (xB, yB) = (image_points[2])
+                    offset = (round(np.sqrt((xA-xB)**2 + (yA - yB)**2))/4)
+
+                    fin_img_eyes_xy[1] -= offset
+
 
     fin_img = crop_above_eyes(fin_img, fin_img_eyes_xy)
 
@@ -160,22 +169,22 @@ def widest_img(img_array):
             try:
                 m = (p2[1] - p1[1])/(p2[0] - p1[0])
                 ang1 = int(math.degrees(math.atan(m)))
+
             except:
-                ang1 = 90
+                continue
 
             try:
                 m = (x2[1] - x1[1])/(x2[0] - x1[0])
                 ang2 = int(math.degrees(math.atan(-1/m)))
             except:
-                ang2 = 90
+                continue
 
 
+            if fin_ang2 is None or abs(ang2) > fin_ang2:
 
-            if fin_ang1 is None or abs(ang1) < fin_ang1:
-                if fin_ang2 is None or abs(ang2) > fin_ang2:
-                    fin_ang1 = abs(ang1)
-                    fin_ang2 = abs(ang2)
-                    fin_img = img
+                fin_ang1 = abs(ang1)
+                fin_ang2 = abs(ang2)
+                fin_img = img
 
 
 
