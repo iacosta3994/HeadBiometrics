@@ -1,11 +1,9 @@
 import numpy as np
 import cv2
 import copy
-from src.key_frame_extraction import split_frames
-from src.video_to_mm import video_to_pixel_mm
+
 from src.narrow_wide_img_select import widest_img
-from src.keep_above_points import keep_img_above_points
-from src.face_contour_width import img_head_contour_side_SMPL
+from src.face_contour_width import img_head_contour_side
 
 
 
@@ -43,72 +41,31 @@ def dis_in_points(pointA, pointB):
     return round(np.sqrt((xA-xB)**2 + (yA - yB)**2))
 
 
-def side_mm_metrics(path):
-    img_array = split_frames(path)
 
 
-    side_head_img = widest_img(img_array)
-
-    if side_head_img is None:
-        print('Error: can not use image')
-    else:
-
-        def solve_length(img):
-            print("select length")
-            eyebrows, back = point_return(img)
-
-            length = dis_in_points( eyebrows,  back)
-
-            return length
-
-        side_head_img_length = side_head_img.copy()
-        length = solve_length(side_head_img_length)
+def side_mm_metrics_postmtrp(wide_img, pixel_mm):
 
 
-        def solve_f2nape(img):
-            print("select front to nape")
-            front, nape = point_return(img)
-            front2nape = img_head_contour_side_SMPL(img, front, nape)
-            return front2nape
+    def solve_length(img):
+        print("select length points")
+        eyebrows, back = point_return(img)
+        length = dis_in_points( eyebrows,  back)
+        return length
+    side_head_img_length = wide_img.copy()
+    length = solve_length(side_head_img_length)
+    length = int(length * pixel_mm[0])
 
-        side_head_img_front2nape = side_head_img.copy()
-        front2nape = solve_f2nape(side_head_img_front2nape)
+    def solve_f2nape(img):
+        print("select front to nape")
+        front, nape = point_return(img)
 
-        pixel_mm = video_to_pixel_mm(img_array)
+        front2nape = img_head_contour_side(img, front, nape)
+        return front2nape
 
-        front2nape = int(front2nape * pixel_mm[0])
+    side_head_img_front2nape = wide_img.copy()
+    front2nape = solve_f2nape(side_head_img_front2nape)
+    front2nape = int(front2nape * pixel_mm[0])
+    front2nape = int(front2nape * .5)
 
-        angle_correction = np.sqrt(pixel_mm[0]/2)
-        length = int(length * angle_correction)
-
-    return front2nape, length
-
-
-def side_mm_metrics_postmtrp(img_array, pixel_mm):
-    side_head_img = widest_img(img_array)
-    if side_head_img is None:
-        print("side_head_img is None")
-    else:
-
-        def solve_length(img):
-            print("select length points")
-            eyebrows, back = point_return(img)
-            length = dis_in_points( eyebrows,  back)
-            return length
-        side_head_img_length = side_head_img.copy()
-        length = solve_length(side_head_img_length)
-
-
-        def solve_f2nape(img):
-            print("select front to nape")
-            front, nape = point_return(img)
-            front2nape = img_head_contour_side_SMPL(img, front, nape)
-            return front2nape
-
-        side_head_img_front2nape = side_head_img.copy()
-        front2nape = solve_f2nape(side_head_img_front2nape)
-        front2nape = int(front2nape * pixel_mm[0])
-        front2nape = int(front2nape * .5)
-        length = int(length * pixel_mm[0])
 
     return front2nape, length
