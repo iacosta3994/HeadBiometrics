@@ -17,7 +17,7 @@ def get_contour(contours):
             ("contour in face_contour_width is not working as expected,findContours changed output type check opencv documentation for updates"))
     return contour
 
-def img_head_contour_front(img, ret_contour = True):
+def ned_front(img, ret_img = False):
     if len(img.shape) == 2:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
@@ -27,7 +27,7 @@ def img_head_contour_front(img, ret_contour = True):
         ned_img = cv2.cvtColor(ned_img, cv2.COLOR_GRAY2BGR)
 
     cv2.drawContours(ned_img, contour,-1, (0,255,0), 3)
-    cv2.imshow("img_head_contour_front", ned_img)
+    cv2.imshow("ned_front", ned_img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -36,10 +36,10 @@ def img_head_contour_front(img, ret_contour = True):
 
 
 
-    if ret_contour == True:
-        return  contour, contour_length
-    else:
+    if ret_img == True:
         return contour_length, ned_img
+    else:
+        return contour, contour_length
 
 # uses neural edge detection to locate edge of head
 def img_head_contour_side_NED(img, pointA, pointB):
@@ -84,7 +84,6 @@ def img_head_contour_side_NED(img, pointA, pointB):
         if len(img.shape) == 3:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        img = cv2.GaussianBlur(img, (3,3), 0)
 
         # creates list of contours
         contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -110,16 +109,15 @@ def img_head_contour_side_NED(img, pointA, pointB):
 
 
 
-#loctes front to nape with cv tools
+#locates front to nape with cv tools
 def img_head_contour_side(img, pointA, pointB):
-
 
     def keep_img_above_points(img, pointA, pointB):
 
         x1, y1 = pointA
         x2, y2 = pointB
-        # slope of line
 
+        # slope of line
         m = float(y2 - y1) / float(x2 - x1)
         c = y2 - m*x2
 
@@ -139,11 +137,7 @@ def img_head_contour_side(img, pointA, pointB):
 
                 if y > m*x + c:
                     img[y][x] = [0, 0, 0]
-
-
         return img
-
-    f2nape = keep_img_above_points(img, pointA, pointB)
 
     def head_contour_side(img):
 
@@ -161,6 +155,8 @@ def img_head_contour_side(img, pointA, pointB):
         contour = max(contour, key = cv2.contourArea)
         return contour
 
+    f2nape = keep_img_above_points(img, pointA, pointB)
+
     contour = head_contour_side(f2nape)
 
     cv2.drawContours(f2nape, [contour],-1, (0,255,0), 3)
@@ -170,4 +166,5 @@ def img_head_contour_side(img, pointA, pointB):
 
     f2nape_length = cv2.arcLength(contour, closed = True)
 
+    f2nape_length *= .8
     return f2nape_length
