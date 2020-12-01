@@ -49,28 +49,31 @@ def make_sobel_face(img):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # makes the gradient using x and y axis
-    grad_x = cv2.Sobel(img, ddepth, 1, 0, ksize=11, scale=scale,
+    grad_x = cv2.Sobel(img, ddepth, 1, 0, ksize=25, scale=scale,
                        delta=delta, borderType=cv2.BORDER_DEFAULT)
-    grad_y = cv2.Sobel(img, ddepth, 0, 1, ksize=9, scale=scale,
+    grad_y = cv2.Sobel(img, ddepth, 0, 1, ksize=5, scale=scale,
                        delta=delta, borderType=cv2.BORDER_DEFAULT)
     # this section prepares it to combine together
     abs_grad_x = cv2.convertScaleAbs(grad_x)
     abs_grad_y = cv2.convertScaleAbs(grad_y)
     img = cv2.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
     # the white pixels are expanded to company any contours that are seperated
-    img = cv2.dilate(img, (5, 5))
+    img = cv2.dilate(img, (15, 15))
+
+    kernel = np.ones((25,25),np.uint8)
     # runs another level of dilation and then erodes it
-    img = cv2.morphologyEx(img, cv2.MORPH_OPEN, (5, 5))
-    img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, (7,7))
+    img = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
+    img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+
+    kernel = np.ones((11,11),np.uint8)
+    img = cv2.erode(img, kernel, 1)
     return img
 
 
-def auto_canny_face(img, sigma = 0.55):
+def auto_canny_face(img, sigma = 0.33):
 
-    img = cv2.GaussianBlur(img, (3,3), 0)
-
+    img = cv2.GaussianBlur(img, (5,5), 0)
     img = auto_canny(img, sigma)
-
 
     return img
 
@@ -85,21 +88,7 @@ def get_contour(contours):
     return contour
 
 
-def head_contour(img):
 
-    # creates list of contours
-    contours = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    # grabs the largest contour
-
-    contour = get_contour(contours)
-
-
-    if len(contour) == 0:
-        return None , None
-
-    contour = max(contour, key = cv2.contourArea)
-
-    return contour, img
 
 
 def neural_edge_detection(frame, ret_contour = True):
@@ -128,9 +117,18 @@ def neural_edge_detection(frame, ret_contour = True):
 
 
     if ret_contour is True:
-        outcopy = out.copy()
-        contour, out = head_contour(out)
-        return contour, outcopy
 
-    else:
+        contours = cv2.findContours(out, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        # grabs the largest contour
+
+        contour = get_contour(contours)
+
+        if len(contour) == 0:
+            return None , None
+
+        contour = max(contour, key = cv2.contourArea)
+
+        return contour, out
+
+    if ret_contour is False:
         return out
