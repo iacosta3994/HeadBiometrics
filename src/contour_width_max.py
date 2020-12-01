@@ -22,5 +22,6 @@ def ret_contour_width(contour):
     max_list.append(max(top_max))
     max_list.append(max(bottom_max))
 
-    dilation_offset = .8333 * max(max_list)
+    dilation_offset = max(max_list) - 100
+
     return dilation_offset
