@@ -165,6 +165,8 @@ def img_head_contour_side(img, pointA, pointB):
     cv2.destroyAllWindows()
 
     f2nape_length = cv2.arcLength(contour, closed = True)
+    
+    f2nape_length -= 500
 
-    f2nape_length *= .8
+
     return f2nape_length
