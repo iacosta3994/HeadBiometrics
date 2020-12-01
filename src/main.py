@@ -12,8 +12,8 @@ from src.key_frame_extraction import split_frames
 from src.video_to_mm import video_to_pixel_mm
 from src.narrow_wide_img_select import narrow_wide_img
 
-def run(path, ios):
-    img_array = split_frames(path, ios)
+def run(path, clockwise):
+    img_array = split_frames(path, clockwise)
 
     pixel_mm = video_to_pixel_mm(img_array)
 
@@ -28,13 +28,8 @@ def run(path, ios):
     return circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm
 
 
-#circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm = run('Videoq_Tests/Test_Video_from_Desma/jada-1.MOV')
-#circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm = run('Video_Tests/Test_Video_from_Desma/avery-1.MOV')
-#circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm = run('Video_Tests/Test_Video_from_Desma/desma-1.MOV')
-#circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm = run('Video_Tests/Test_Video_from_Desma/james-1.MOV')
-#circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm = run('Video_Tests/Test_Video_from_Desma/angie-1.MOV')
-#circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm = run('Video_Tests/Test_Video_from_Desma/jay-1.MOV', ios=True)
-circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm = run('Video_Tests/Self.mp4', ios = False)
+
+circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm = run('Video_Tests/Self.mp4', clockwise = False)
 
 
 print(circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm)

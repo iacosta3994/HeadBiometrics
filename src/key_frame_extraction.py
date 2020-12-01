@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 # Function splits incoming mp4 and returns
-def split_frames(cap_origin_path, ios = False):
+def split_frames(cap_origin_path, clockwise = False):
 
 
     # Assigning video from file to variable cap
@@ -20,7 +20,7 @@ def split_frames(cap_origin_path, ios = False):
 
             height, width, _ = frame.shape
             if height < width:
-                if ios == True:
+                if clockwise == True:
                     #rotates clockwise for ios
                     frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
 
