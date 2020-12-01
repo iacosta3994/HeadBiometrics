@@ -40,7 +40,7 @@ def ned_front(img, ret_img = False):
         return contour_length, ned_img
     else:
         return contour, contour_length
-
+'''
 # uses neural edge detection to locate edge of head
 def img_head_contour_side_NED(img, pointA, pointB):
 
@@ -106,7 +106,7 @@ def img_head_contour_side_NED(img, pointA, pointB):
     f2nape_length = cv2.arcLength(contour, closed = True)
 
     return f2nape_length
-
+'''
 
 
 #locates front to nape with cv tools
