@@ -1,7 +1,6 @@
 import numpy as np
 import cv2
 
-from src.narrow_wide_img_select import narrowest_img
 from src.face_contour_width import ned_front
 from src.contour_width_max import ret_contour_width
 
