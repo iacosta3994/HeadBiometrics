@@ -1,8 +1,7 @@
 import numpy as np
 import cv2
-import copy
 
-from src.narrow_wide_img_select import widest_img
+
 from src.face_contour_width import img_head_contour_side
 
 
@@ -51,8 +50,9 @@ def side_mm_metrics_postmtrp(wide_img, pixel_mm):
         eyebrows, back = point_return(img)
         length = dis_in_points( eyebrows,  back)
         return length
-    side_head_img_length = wide_img.copy()
-    length = solve_length(side_head_img_length)
+
+
+    length = solve_length(wide_img)
     length = int(length * pixel_mm[0])
 
     def solve_f2nape(img):
@@ -62,8 +62,7 @@ def side_mm_metrics_postmtrp(wide_img, pixel_mm):
         front2nape = img_head_contour_side(img, front, nape)
         return front2nape
 
-    side_head_img_front2nape = wide_img.copy()
-    front2nape = solve_f2nape(side_head_img_front2nape)
+    front2nape = solve_f2nape(wide_img)
     front2nape = int(front2nape * pixel_mm[0])
     front2nape = int(front2nape * .5)
 
