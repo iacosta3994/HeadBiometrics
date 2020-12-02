@@ -26,15 +26,7 @@ def ned_front(img, ret_img = False):
     if len(ned_img.shape) == 2:
         ned_img = cv2.cvtColor(ned_img, cv2.COLOR_GRAY2BGR)
 
-    cv2.drawContours(ned_img, contour,-1, (0,255,0), 3)
-    cv2.imshow("ned_front", ned_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
     contour_length = len(contour)
-
-
 
     if ret_img == True:
         return contour_length, ned_img
@@ -159,13 +151,8 @@ def img_head_contour_side(img, pointA, pointB):
 
     contour = head_contour_side(f2nape)
 
-    cv2.drawContours(f2nape, [contour],-1, (0,255,0), 3)
-    cv2.imshow("img_head_contour_side", f2nape)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
     f2nape_length = cv2.arcLength(contour, closed = True)
-    
+
     f2nape_length -= 500
 
 
