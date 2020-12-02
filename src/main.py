@@ -1,8 +1,6 @@
 import os
 import sys
 import numpy as np
-
-
 # protocol://host:port/script_name?script_params|auth
 
 
