@@ -1,8 +1,6 @@
 import os
 import sys
 import numpy as np
-# protocol://host:port/script_name?script_params|auth
-
 
 from src.front_quantify import front_mm_metrics_postmtrp
 from src.side_quantify import side_mm_metrics_postmtrp
