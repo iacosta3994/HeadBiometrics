@@ -21,11 +21,9 @@ def run(path, clockwise):
 
     circumference_mm = int(((head_width_mm * 2) + (length_mm * 2)) * 0.834626841674)
 
-    return circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm
+    return circumference_mm, front2nape_mm, ear_to_ear_mm
 
 
-
-circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm = run('Video_Tests/Self.mp4', clockwise = False)
-
-
-print(circumference_mm, front2nape_mm, ear_to_ear_mm, length_mm, head_width_mm)
+#Test program demostrating the program
+circumference_mm, front2nape_mm, ear_to_ear_mm = run('Video_Tests/Self.mp4', clockwise = False)
+print(circumference_mm, front2nape_mm, ear_to_ear_mm)
