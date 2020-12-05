@@ -1,6 +1,5 @@
 import os
 import sys
-import numpy as np
 
 from src.front_quantify import front_mm_metrics_postmtrp
 from src.side_quantify import side_mm_metrics_postmtrp
