@@ -1,0 +1,23 @@
+# HTTP API
+fastapi>=0.110,<1
+uvicorn[standard]>=0.27,<1
+python-multipart>=0.0.9
+pydantic>=2,<3
+
+# Core CV stack used by the legacy pipeline
+numpy>=1.24,<3
+opencv-python-headless>=4.8,<5
+
+# TensorFlow is required for facial landmark detection
+# (src/Proctoring_AI/face_landmarks.py). The original project targeted TF 1.x/2.x
+# circa 2020. Modern Python (3.11+) may need tensorflow>=2.15; older Python may
+# need a pinned older wheel. Install only if you need the real pipeline:
+#   pip install "tensorflow>=2.15,<3"
+#
+# tensorflow is intentionally NOT a hard requirement so /health and DEMO_MODE
+# work without it. Set DEMO_MODE=1 to get labeled mock measurements when the
+# CV/TF stack cannot be imported.
+
+# Dev / test
+pytest>=7.4,<9
+httpx>=0.27,<1

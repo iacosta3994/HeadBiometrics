@@ -1,79 +1,156 @@
-This is the Head biometrics program, Utilizing numpy, OpenCV, and TensorFlow libraries to calculate the dimensions of the head using a cellphone camera.
+# HeadBiometrics
 
-First we start off with Split Frames
-Split frames input the incoming video file, The video frames are rotated 90 degrees clockwise or counterclockwise depending on the tags to ensure that the nupy array of frames are in portrait mode. This array will be used in 2 different function s to extract the head’s dimensions presented in the video. 
+HTTP API (FastAPI) over a ~2020 OpenCV / TensorFlow pipeline that estimates head
+dimensions (circumference, front-to-nape, ear-to-ear, width, length) from a
+cellphone video that includes a **magnetic stripe card** as a real-world scale
+reference.
 
-Show turning IMG clockwise or counterclockwise
-Video to Pixel mm
-This module is composed of 4 built modules, not including cv2 and NumPy.
+The original scripts live under `src/` and remain available. The new service
+package is `head_biometrics/`.
 
-Make Canny Magstripe
-With the incoming array of frames, each image goes through the make canny magstripe function that creates an edge image by converting it to grayscale, blurring, and increase its contrast. The image goes through a binary threshold process to keep the darkest pixels in the image to help detect the magstripe in the picture. 
+## Features
 
-Show magstripe self.zip
+- `GET /health` — liveness check (works without TensorFlow / OpenCV)
+- `POST /v1/measure` — multipart video upload → JSON millimeter measurements
+- Optional `DEMO_MODE=1` — labeled mock response when the CV stack cannot import
+- Legacy CLI path: `python -m src.main` (from repo root)
 
-Get Magstripe Dimensions 
-The contours of the image are then extracted and follow into the detect magstripe function. 
-This function goes through each contour, accounts for minimal glare, and generates a bounding box around the detected contour. The ones that closely match the aspect ratio expected are appended to a list of detected magstripes with information such as width, height, area, aspect ratio, along with a unique name
+## Requirements
 
-Std filter
+| Layer | Packages |
+|-------|----------|
+| API   | `fastapi`, `uvicorn[standard]`, `python-multipart`, `pydantic` |
+| CV    | `numpy`, `opencv-python-headless` |
+| ML    | `tensorflow` (facial landmarks via `src/Proctoring_AI`) — **optional for /health & DEMO_MODE** |
 
-The standard deviation filter allows for the list of detected magstripe to be filtered in accordance with area, and aspect ratio with the option to adjust the level of deviations to let through. 
+> **TensorFlow note:** The landmark model was built against TF ~2.x circa 2020.
+> On modern Python (3.11+) try `pip install "tensorflow>=2.15,<3"`. Older
+> environments may need a matching older wheel. TF is intentionally not a hard
+> dependency of the API so the health endpoint and tests can run without it.
 
-IDX Filter
-Then the final list goes throught he index filter and removes any detected magstripes that do not meet criteria
+Model artifacts under `src/HED_model/` and `src/Proctoring_AI/` must remain in
+place; do not delete them.
 
-In the end, the smallest variable is returned indicating the real-world representation that makes up a pixel in the image.
+## Install
 
-Narrow, wide IMG select
+```bash
+# from repo root
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 
-In this module, the face detector model is loaded from the proctoring AI that uses Tensorflow and the facial feature landmark model. 
+# for the real measurement pipeline (not needed for mocked tests / DEMO_MODE):
+pip install "tensorflow>=2.15,<3"
+```
 
-Each of the six facial landmark points is preestablished in an array. Points tracked include nose , chin, the corners of the left and right eye, and the left and right sides of the mouth.
+Run the API **from the repository root** so relative model paths such as
+`src/Proctoring_AI/models/...` resolve correctly.
 
+## Run
 
-Show the head pose estimator program.
+```bash
+uvicorn head_biometrics.app:app --host 0.0.0.0 --port 8000 --reload
+```
 
-Variables are established to track the horizontal and vertical angle of the head for the head pose estimation algorithm. For every image in the array all the points are collected, two images are saved, one where the face is closest to a neutral pose. The second image is then selected for which the head pose is facing farthest away from the neutral starting point. The image where the person faces directly which is the narrowest pint of the head is put through an automated cropping function using the eyes’ points for reference. It is set up to maintain self adaptability in changes of image resolution. 
+Open interactive docs at http://127.0.0.1:8000/docs
 
-Show widest IMG and narrowest, then show narrowest IMG after crop above eyes.
+### Demo mode (no CV/TF)
 
-Front quantify
-Import numpy cv2
+```bash
+DEMO_MODE=1 uvicorn head_biometrics.app:app --port 8000
+```
 
-This function has two unique modules that will be used o automatically complete the ear to ear and head width metric. 
+Mock measurements are returned only when the CV stack cannot be imported **and**
+`DEMO_MODE=1`. Responses set `meta.demo_mode: true` and include an explanatory
+`meta.note`. Fake numbers are never returned silently.
 
-NED front
+## Example curl
 
-The narrowest IMG is then fed into the neural edge detector model that utilizes TensorFlow to distinguish between the foreground and background. 
+```bash
+# health
+curl -s http://127.0.0.1:8000/health | jq
 
-Show ned image
+# measure (Android-style rotation: clockwise=false)
+curl -s -X POST http://127.0.0.1:8000/v1/measure \
+  -F "video=@Video_Tests/Self.mp4;type=video/mp4" \
+  -F "clockwise=false" | jq
 
-The contour of the head is then returned for the next steps. 
+# measure (iOS-style rotation: clockwise=true)
+curl -s -X POST http://127.0.0.1:8000/v1/measure \
+  -F "video=@/path/to/video.mp4;type=video/mp4" \
+  -F "clockwise=true" | jq
+```
 
-Ret contour width
+Example success payload:
 
-This module analyzes the contour and generates a bounding box to determine the head above’s height and width above the eyes. Due to the ned image dilation process of the lines, the head’s width is offset by 50pts on each side following the dilation used in NED  to return the correct width of the contour. 
+```json
+{
+  "measurements_mm": {
+    "circumference": 560,
+    "front_to_nape": 340,
+    "ear_to_ear": 150,
+    "head_width": 155,
+    "length": 195
+  },
+  "meta": {
+    "clockwise": false,
+    "filename": "Self.mp4",
+    "demo_mode": false,
+    "note": null
+  }
+}
+```
 
-Front mm metrics 
-The pixel width of the head and the ear to ear measurement are then multiplied by the pixel mm metric to return the measurements. 
-Side Quantify
-Numpy cv2 
-Side quantify starts off with the point return function that gives the pixel coordinates to calculate the length of the head, and the front of the wanted hearline to the nape. 
+## Pipeline overview
 
-The length is calculated by measuring the distance between the front and back points. 
+Same logic as `src/main.py` `run()`:
 
-To calculate for the front to nape, a couple of image manipulation processes are followed, the side image undergoes edge detection using canny and Sobel functions.  
+1. Split video frames (`key_frame_extraction`) — optional 90° rotate for portrait
+2. Detect magstripe → pixels-per-mm scale (`video_to_mm`)
+3. Pick narrow (front) / wide (side) frames via face + head-pose models
+4. Front metrics (`front_quantify`) → ear-to-ear, head width
+5. Side metrics (`side_quantify`) → front-to-nape, length
+6. Circumference ≈ `((width*2)+(length*2)) * 0.834626841674`
 
-Show canny image
+The HTTP wrapper returns all **five** values (the original `run()` only returned
+three).
 
-The Sobel function uses a uses both an x-axis and y-axis filter. The grad x Sobel’s kernel size is 5 times larger to reduce the chances for breaks in the contour line primarily on the top of the head. The two images are then merged, the lines are dilated and eroded for a cleaner line. 
+## Known limitations
 
-Using the 2 points for the front to nape, the program then deletes the pixels underneath the points leaving behind the top of the head’s contour used for the measurement. 
+- **Magstripe required.** A credit-card-style magnetic stripe must be visible so
+  the pipeline can compute a pixel→mm scale. Without it, `/v1/measure` returns
+  **422**.
+- **Case-sensitive imports.** Module files under `src/` were renamed to lowercase
+  (`front_quantify.py`, etc.) so Linux imports match the historical
+  `from src.front_quantify import ...` style.
+- **Interactive side points.** Legacy `side_quantify.side_mm_metrics_postmtrp`
+  uses OpenCV GUI mouse clicks to pick length / front-to-nape points. That does
+  **not** work in a headless server. Expect **422** (or a GUI prompt) until that
+  step is automated. Front / magstripe stages are automated.
+- **Heavy models.** HED (~56MB caffemodel) and Proctoring_AI pose/face models
+  must stay on disk; paths are hard-coded relative to the repo root.
+- **Python / TF friction.** Installing an old TF stack on current Python can be
+  painful — use `DEMO_MODE=1` or mocked tests when you only need the HTTP shell.
+- **Not medical-grade.** Research / prototype accuracy only.
 
-The contour is composed of 4 different sides, the outer top, the inner bottom, and the left and right edge. The contour used for the front to nape is only focused on the contour’s outer side, negating the other three. 
+## Tests
 
-That contour length is converted to millimeters. 
+```bash
+pytest -q
+```
 
-The circumference is then calculated using an elliptical constant utilizing the height and width collected previously, 
-In the end, we can return the circumference, front to nape, ear to ear, length, and width of the head in millimeters 
+Tests mock the pipeline so CI does not need TensorFlow or OpenCV.
+
+## Project layout
+
+```
+head_biometrics/     # FastAPI app + pipeline adapter
+src/                 # Original CV/TF measurement modules + model weights
+tests/               # pytest (health + mocked /v1/measure)
+Video_Tests/         # Sample video(s)
+requirements.txt
+```
+
+## License
+
+See `LICENSE`.
