@@ -19,6 +19,7 @@ from head_biometrics.pipeline import (
     DependencyError,
     DetectionError,
     PipelineError,
+    ScaleOptions,
     measure_upload,
     pipeline_available,
 )
@@ -29,9 +30,10 @@ app = FastAPI(
     title="HeadBiometrics API",
     description=(
         "HTTP service wrapping the legacy OpenCV/TensorFlow head-measurement "
-        "pipeline. Upload a video that includes a visible magstripe scale card."
+        "pipeline. Scale can come from a magstripe card, an explicit mm/pixel "
+        "value, a known reference object width, or an IPD population prior."
     ),
-    version="0.1.0",
+    version="0.2.0",
 )
 
 
@@ -52,6 +54,26 @@ async def measure(
         False,
         description="Rotate landscape frames 90° clockwise (iOS); false = counter-clockwise (Android)",
     ),
+    scale_mode: str = Form(
+        "magstripe",
+        description="magstripe | mm_per_pixel | reference_mm | ipd",
+    ),
+    mm_per_pixel: Optional[float] = Form(
+        None,
+        description="Required when scale_mode=mm_per_pixel (millimeters per pixel)",
+    ),
+    reference_width_mm: Optional[float] = Form(
+        None,
+        description="Known object width in mm (scale_mode=reference_mm)",
+    ),
+    reference_width_px: Optional[float] = Form(
+        None,
+        description="Same object width in pixels (scale_mode=reference_mm)",
+    ),
+    ipd_mm: Optional[float] = Form(
+        63.0,
+        description="IPD prior in mm for scale_mode=ipd (default adult mean 63)",
+    ),
 ) -> MeasureResponse:
     if video is None:
         raise HTTPException(status_code=400, detail="Missing video file upload.")
@@ -71,8 +93,21 @@ async def measure(
         # Still accept; many clients mislabel. Log only.
         logger.info("Unusual content-type for upload: %s", content_type)
 
+    scale_options = ScaleOptions(
+        scale_mode=(scale_mode or "magstripe").strip().lower(),
+        mm_per_pixel=mm_per_pixel,
+        reference_width_mm=reference_width_mm,
+        reference_width_px=reference_width_px,
+        ipd_mm=63.0 if ipd_mm is None else float(ipd_mm),
+    )
+
     try:
-        result = measure_upload(video.file, filename=filename, clockwise=clockwise)
+        result = measure_upload(
+            video.file,
+            filename=filename,
+            clockwise=clockwise,
+            scale_options=scale_options,
+        )
     except DetectionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except DependencyError as exc:
@@ -105,6 +140,8 @@ async def measure(
             filename=filename,
             demo_mode=result.demo_mode,
             note=result.note,
+            scale_mode=result.scale_mode or scale_options.scale_mode,
+            scale_note=result.scale_note,
         ),
     )
 

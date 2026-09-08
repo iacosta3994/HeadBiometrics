@@ -20,6 +20,14 @@ class MeasureMeta(BaseModel):
     filename: Optional[str] = None
     demo_mode: bool = False
     note: Optional[str] = None
+    scale_mode: Optional[str] = Field(
+        None,
+        description="Scale resolution mode: magstripe | mm_per_pixel | reference_mm | ipd",
+    )
+    scale_note: Optional[str] = Field(
+        None,
+        description="Extra info about scale (e.g. IPD prior caveat)",
+    )
 
 
 class MeasureResponse(BaseModel):
