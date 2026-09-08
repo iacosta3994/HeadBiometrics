@@ -13,7 +13,7 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import BinaryIO, Optional, Union
+from typing import BinaryIO, Optional, Sequence, Union
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,8 @@ if str(_REPO_ROOT) not in sys.path:
 DEMO_MODE = os.environ.get("DEMO_MODE", "").strip().lower() in {"1", "true", "yes", "on"}
 
 CIRCUMFERENCE_FACTOR = 0.834626841674
+
+VALID_SCALE_MODES = frozenset({"magstripe", "mm_per_pixel", "reference_mm", "ipd"})
 
 
 class PipelineError(Exception):
@@ -49,26 +51,37 @@ class MeasurementResult:
     length: int
     demo_mode: bool = False
     note: Optional[str] = None
+    scale_mode: Optional[str] = None
+    scale_note: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class ScaleOptions:
+    scale_mode: str = "magstripe"
+    mm_per_pixel: Optional[float] = None
+    reference_width_mm: Optional[float] = None
+    reference_width_px: Optional[float] = None
+    ipd_mm: float = 63.0
 
 
 def _try_import_pipeline():
     """Import legacy modules. Returns callables or raises DependencyError."""
     try:
         from src.key_frame_extraction import split_frames
-        from src.video_to_mm import video_to_pixel_mm
         from src.narrow_wide_img_select import narrow_wide_img
         from src.front_quantify import front_mm_metrics_postmtrp
         from src.side_quantify import side_mm_metrics_postmtrp
+        from src import scale_modes
     except Exception as exc:  # noqa: BLE001 — surface any import/runtime dep failure
         raise DependencyError(
             f"CV/TF pipeline dependencies are unavailable: {exc}"
         ) from exc
     return (
         split_frames,
-        video_to_pixel_mm,
         narrow_wide_img,
         front_mm_metrics_postmtrp,
         side_mm_metrics_postmtrp,
+        scale_modes,
     )
 
 
@@ -80,7 +93,7 @@ def pipeline_available() -> bool:
         return False
 
 
-def _demo_result(reason: str) -> MeasurementResult:
+def _demo_result(reason: str, scale_mode: str = "magstripe") -> MeasurementResult:
     return MeasurementResult(
         circumference=560,
         front_to_nape=340,
@@ -92,46 +105,123 @@ def _demo_result(reason: str) -> MeasurementResult:
             "DEMO_MODE mock measurements — not derived from the uploaded video. "
             f"Reason: {reason}"
         ),
+        scale_mode=scale_mode,
+        scale_note=None,
     )
 
 
-def run_measurements(video_path: Union[str, Path], clockwise: bool = False) -> MeasurementResult:
+def validate_scale_options(opts: ScaleOptions) -> None:
+    """Raise DetectionError if form fields are inconsistent with scale_mode."""
+    mode = (opts.scale_mode or "magstripe").strip().lower()
+    if mode not in VALID_SCALE_MODES:
+        raise DetectionError(
+            f"Invalid scale_mode={opts.scale_mode!r}. "
+            f"Expected one of: {', '.join(sorted(VALID_SCALE_MODES))}."
+        )
+    if mode == "mm_per_pixel":
+        if opts.mm_per_pixel is None:
+            raise DetectionError(
+                "scale_mode=mm_per_pixel requires form field mm_per_pixel (float > 0)."
+            )
+        if float(opts.mm_per_pixel) <= 0:
+            raise DetectionError("mm_per_pixel must be a positive float.")
+    elif mode == "reference_mm":
+        if opts.reference_width_mm is None or opts.reference_width_px is None:
+            raise DetectionError(
+                "scale_mode=reference_mm requires reference_width_mm and "
+                "reference_width_px (both > 0). ISO ID-1 auto-detection is a "
+                "follow-up; supply explicit pixel width from the client for now."
+            )
+        if float(opts.reference_width_mm) <= 0 or float(opts.reference_width_px) <= 0:
+            raise DetectionError(
+                "reference_width_mm and reference_width_px must be positive."
+            )
+    elif mode == "ipd":
+        if opts.ipd_mm is None or float(opts.ipd_mm) <= 0:
+            raise DetectionError("ipd_mm must be a positive float (default 63).")
+
+
+def resolve_pixel_mm(img_array: Sequence, opts: ScaleOptions, scale_modes_mod):
+    """Return ``(pixel_mm, scale_note)`` compatible with quantify helpers."""
+    mode = (opts.scale_mode or "magstripe").strip().lower()
+    validate_scale_options(ScaleOptions(
+        scale_mode=mode,
+        mm_per_pixel=opts.mm_per_pixel,
+        reference_width_mm=opts.reference_width_mm,
+        reference_width_px=opts.reference_width_px,
+        ipd_mm=opts.ipd_mm if opts.ipd_mm is not None else 63.0,
+    ))
+
+    try:
+        if mode == "magstripe":
+            return scale_modes_mod.from_magstripe(img_array), None
+        if mode == "mm_per_pixel":
+            return scale_modes_mod.from_mm_per_pixel(opts.mm_per_pixel), None
+        if mode == "reference_mm":
+            return (
+                scale_modes_mod.from_reference(
+                    opts.reference_width_mm, opts.reference_width_px
+                ),
+                (
+                    "Scale from client-supplied reference object "
+                    f"({opts.reference_width_mm} mm / {opts.reference_width_px} px). "
+                    "Automatic ISO ID-1 card detection is not enabled yet."
+                ),
+            )
+        if mode == "ipd":
+            ipd_mm = float(opts.ipd_mm) if opts.ipd_mm is not None else 63.0
+            return scale_modes_mod.from_ipd(img_array, ipd_mm=ipd_mm)
+    except scale_modes_mod.ScaleError as exc:
+        raise DetectionError(str(exc)) from exc
+
+    raise DetectionError(f"Unhandled scale_mode: {mode}")
+
+
+def run_measurements(
+    video_path: Union[str, Path],
+    clockwise: bool = False,
+    scale_options: Optional[ScaleOptions] = None,
+) -> MeasurementResult:
     """Run the legacy pipeline and return all five millimeter metrics.
 
     Mirrors ``src.main.run`` but also exposes ``head_width`` and ``length``.
     """
+    opts = scale_options or ScaleOptions()
+    mode = (opts.scale_mode or "magstripe").strip().lower()
+
     try:
         (
             split_frames,
-            video_to_pixel_mm,
             narrow_wide_img,
             front_mm_metrics_postmtrp,
             side_mm_metrics_postmtrp,
+            scale_modes,
         ) = _try_import_pipeline()
     except DependencyError as exc:
         if DEMO_MODE:
             logger.warning("DEMO_MODE active: %s", exc)
-            return _demo_result(str(exc))
+            return _demo_result(str(exc), scale_mode=mode)
         raise
 
     path = str(video_path)
     try:
+        # Validate scale form fields early (before heavy CV) so bad requests 422.
+        try:
+            validate_scale_options(ScaleOptions(
+                scale_mode=mode,
+                mm_per_pixel=opts.mm_per_pixel,
+                reference_width_mm=opts.reference_width_mm,
+                reference_width_px=opts.reference_width_px,
+                ipd_mm=opts.ipd_mm if opts.ipd_mm is not None else 63.0,
+            ))
+        except DetectionError:
+            raise
+
         img_array = split_frames(path, clockwise)
         if img_array is None or len(img_array) == 0:
             raise DetectionError("No frames could be extracted from the video.")
 
-        try:
-            pixel_mm = video_to_pixel_mm(img_array)
-        except (ValueError, TypeError, IndexError) as exc:
-            raise DetectionError(
-                "Magstripe scale detection failed. Ensure a credit-card-style "
-                f"magnetic stripe is visible in the video. Details: {exc}"
-            ) from exc
-
-        if pixel_mm is None or (hasattr(pixel_mm, "__len__") and len(pixel_mm) == 0):
-            raise DetectionError(
-                "Magstripe scale detection returned no usable pixel/mm estimate."
-            )
+        pixel_mm, scale_note = resolve_pixel_mm(img_array, opts, scale_modes)
 
         try:
             narrow_img, wide_img = narrow_wide_img(img_array)
@@ -151,12 +241,11 @@ def run_measurements(video_path: Union[str, Path], clockwise: bool = False) -> M
             raise DetectionError(f"Front measurement failed: {exc}") from exc
 
         try:
-            front2nape_mm, length_mm = side_mm_metrics_postmtrp(wide_img, pixel_mm)
+            front2nape_mm, length_mm = side_mm_metrics_postmtrp(
+                wide_img, pixel_mm, interactive=False
+            )
         except Exception as exc:  # noqa: BLE001
-            raise DetectionError(
-                "Side measurement failed. Note: the legacy side pipeline uses an "
-                f"interactive OpenCV GUI for point selection. Details: {exc}"
-            ) from exc
+            raise DetectionError(f"Side measurement failed: {exc}") from exc
 
         circumference_mm = int(
             ((head_width_mm * 2) + (length_mm * 2)) * CIRCUMFERENCE_FACTOR
@@ -170,6 +259,8 @@ def run_measurements(video_path: Union[str, Path], clockwise: bool = False) -> M
             length=int(length_mm),
             demo_mode=False,
             note=None,
+            scale_mode=mode,
+            scale_note=scale_note,
         )
     except DetectionError:
         raise
@@ -183,6 +274,7 @@ def measure_upload(
     file_obj: BinaryIO,
     filename: Optional[str],
     clockwise: bool = False,
+    scale_options: Optional[ScaleOptions] = None,
 ) -> MeasurementResult:
     """Persist an uploaded video to a temp file and run measurements."""
     suffix = Path(filename or "upload.mp4").suffix or ".mp4"
@@ -197,7 +289,9 @@ def measure_upload(
     try:
         if tmp_path.stat().st_size == 0:
             raise DetectionError("Uploaded file is empty.")
-        return run_measurements(tmp_path, clockwise=clockwise)
+        return run_measurements(
+            tmp_path, clockwise=clockwise, scale_options=scale_options
+        )
     finally:
         try:
             tmp_path.unlink(missing_ok=True)
