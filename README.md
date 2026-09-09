@@ -2,9 +2,9 @@
 
 HTTP API (FastAPI) over a ~2020 OpenCV / TensorFlow pipeline that estimates head
 dimensions (circumference, front-to-nape, ear-to-ear, width, length) from a
-cellphone video. A **magnetic stripe card** can provide real-world scale, or you
-can supply an alternate scale mode (explicit mm/pixel, reference object, or IPD
-prior).
+cellphone video. Scale can come from a **magnetic stripe**, a full **ISO ID-1
+credit/ID card**, an explicit mm/pixel value, a known reference object, or an
+IPD population prior.
 
 The original scripts live under `src/` and remain available. The new service
 package is `head_biometrics/`.
@@ -12,11 +12,15 @@ package is `head_biometrics/`.
 ## Features
 
 - `GET /health` — liveness check (works without TensorFlow / OpenCV)
+- `GET /v1/scale-modes` — catalog of scale modes + required form fields
 - `POST /v1/measure` — multipart video upload → JSON millimeter measurements
 - **Headless end-to-end** — side metrics auto-select points via landmarks +
   silhouette (no OpenCV GUI / mouse picks required for the API)
-- **Scale modes** — magstripe (default), `mm_per_pixel`, `reference_mm`, `ipd`
+- **Scale modes** — `magstripe` (default), `card` / `id1_card`, `mm_per_pixel`,
+  `reference_mm`, `ipd`
+- Upload size guard — uploads over **100 MB** → HTTP **413**
 - Optional `DEMO_MODE=1` — labeled mock response when the CV stack cannot import
+- Optional `Dockerfile` for a lean API image
 - Legacy CLI path: `python -m src.main` (from repo root)
 
 ## Requirements
@@ -33,7 +37,7 @@ package is `head_biometrics/`.
 > dependency of the API so the health endpoint and tests can run without it.
 
 Model artifacts under `src/HED_model/` and `src/Proctoring_AI/` must remain in
-place; do not delete them.
+place for the full pipeline; do not delete them.
 
 ## Install
 
@@ -68,17 +72,57 @@ Mock measurements are returned only when the CV stack cannot be imported **and**
 `DEMO_MODE=1`. Responses set `meta.demo_mode: true` and include an explanatory
 `meta.note`. Fake numbers are never returned silently.
 
+### Docker
+
+```bash
+# lean image (API + DEMO_MODE; large *.caffemodel / pose weights excluded)
+docker build -t headbiometrics .
+docker run --rm -p 8000:8000 -e DEMO_MODE=1 headbiometrics
+
+# optional: install TensorFlow in the image
+docker build --build-arg INSTALL_TF=1 -t headbiometrics:tf .
+
+# full CV pipeline: mount model directories from the host
+docker run --rm -p 8000:8000 \
+  -v "$PWD/src/HED_model:/app/src/HED_model:ro" \
+  -v "$PWD/src/Proctoring_AI:/app/src/Proctoring_AI:ro" \
+  headbiometrics:tf
+```
+
+Override the upload limit with `-e MAX_UPLOAD_BYTES=...` (default 104857600 = 100 MB).
+
 ## Scale modes
 
 | `scale_mode`     | Required form fields                         | Notes |
 |------------------|----------------------------------------------|-------|
 | `magstripe`      | _(none)_                                     | Default. Detects credit-card magstripe aspect ratios → mm/pixel. |
-| `mm_per_pixel`   | `mm_per_pixel` (float > 0)                   | Caller supplies millimeters per pixel; skips magstripe. |
-| `reference_mm`   | `reference_width_mm`, `reference_width_px`   | Known object width in mm and its measured width in px. ISO ID-1 auto-detect is a follow-up. |
+| `card` (`id1_card`) | _(none)_                                  | Auto-detect full **ISO ID-1** card **85.60 × 53.98 mm**. Scale uses the **longest side**: `mm_per_pixel = 85.60 / max(width_px, height_px)`, median across frames. |
+| `mm_per_pixel`   | `mm_per_pixel` (float > 0)                   | Caller supplies millimeters per pixel; skips auto detection. |
+| `reference_mm`   | `reference_width_mm`, `reference_width_px`   | Known object width in mm and its measured width in px. Prefer `card` for automatic ID-1. |
 | `ipd`            | optional `ipd_mm` (default **63**)           | Interpupillary distance from eye landmarks vs adult mean prior. **Approximate** — see `meta.scale_note`. |
 
+List modes programmatically:
+
+```bash
+curl -s http://127.0.0.1:8000/v1/scale-modes | jq
+```
+
 All modes produce a `pixel_mm` value compatible with the legacy quantify helpers
-(`pixel_mm[0]` = mm per pixel).
+(`pixel_mm[0]` = mm per pixel). Successful responses include `meta.mm_per_pixel`
+(the scalar actually used).
+
+### Card mode details
+
+Implementation lives in `src/card_scale.py` (wired through `src/scale_modes.py`
+and `head_biometrics/pipeline.py`):
+
+1. Grayscale → blur → Canny + adaptive thresholds
+2. `findContours` + `approxPolyDP` for convex quads
+3. Score by aspect ≈ 85.60/53.98 (±12%), area fraction, rectangularity
+4. Prefer longest side for scale; median-aggregate across frames
+
+On failure the API returns **422** with a clear message asking you to show a
+full credit/ID card flat in frame, or use another scale mode.
 
 ## Example curl
 
@@ -86,13 +130,22 @@ All modes produce a `pixel_mm` value compatible with the legacy quantify helpers
 # health
 curl -s http://127.0.0.1:8000/health | jq
 
+# list scale modes
+curl -s http://127.0.0.1:8000/v1/scale-modes | jq
+
+# measure with ISO ID-1 card auto-detect scale
+curl -s -X POST http://127.0.0.1:8000/v1/measure \
+  -F "video=@Video_Tests/Self.mp4;type=video/mp4" \
+  -F "clockwise=false" \
+  -F "scale_mode=card" | jq
+
 # measure with magstripe scale (Android-style rotation: clockwise=false)
 curl -s -X POST http://127.0.0.1:8000/v1/measure \
   -F "video=@Video_Tests/Self.mp4;type=video/mp4" \
   -F "clockwise=false" \
   -F "scale_mode=magstripe" | jq
 
-# measure with explicit mm per pixel (no magstripe needed)
+# measure with explicit mm per pixel (no card/magstripe needed)
 curl -s -X POST http://127.0.0.1:8000/v1/measure \
   -F "video=@Video_Tests/Self.mp4;type=video/mp4" \
   -F "scale_mode=mm_per_pixel" \
@@ -133,8 +186,9 @@ Example success payload:
     "filename": "Self.mp4",
     "demo_mode": false,
     "note": null,
-    "scale_mode": "magstripe",
-    "scale_note": null
+    "scale_mode": "card",
+    "scale_note": "Scale from ISO ID-1 card auto-detect (85.6×53.98 mm; longest-side mm/px; median over 12 frame detection(s)).",
+    "mm_per_pixel": 0.214
   }
 }
 ```
@@ -144,7 +198,7 @@ Example success payload:
 Same logic as `src/main.py` `run()`, plus scale-mode resolution:
 
 1. Split video frames (`key_frame_extraction`) — optional 90° rotate for portrait
-2. Resolve scale → mm per pixel (`magstripe` / `mm_per_pixel` / `reference_mm` / `ipd`)
+2. Resolve scale → mm per pixel (`magstripe` / `card` / `mm_per_pixel` / `reference_mm` / `ipd`)
 3. Pick narrow (front) / wide (side) frames via face + head-pose models
 4. Front metrics (`front_quantify`) → ear-to-ear, head width
 5. Side metrics (`side_quantify`, **headless**) → front-to-nape, length
@@ -169,20 +223,22 @@ three).
 ## Known limitations
 
 - **Magstripe optional, not gone.** Default `scale_mode=magstripe` still needs a
-  visible stripe; use another mode when none is present.
+  visible stripe; use `card` or another mode when none is present.
+- **Card detection** needs a mostly flat, fully visible ISO ID-1 rectangle with
+  enough contrast. Heavy perspective, glare, or partial occlusion → 422.
 - **IPD scale is approximate.** Adult mean ≈ 63 mm is a population prior; responses
-  include `meta.scale_note` explaining this. Prefer magstripe or a measured
+  include `meta.scale_note` explaining this. Prefer magstripe, card, or a measured
   reference when accuracy matters.
-- **Reference object.** `reference_mm` currently requires the client to supply
-  `reference_width_px`. Automatic ISO ID-1 (85.60×53.98 mm) contour detection is
-  documented as a follow-up and not implemented yet.
+- **Reference object.** `reference_mm` still requires the client to supply
+  `reference_width_px`. Use `scale_mode=card` for automatic ISO ID-1 detection.
 - **Case-sensitive imports.** Module files under `src/` were renamed to lowercase
   (`front_quantify.py`, etc.) so Linux imports match the historical
   `from src.front_quantify import ...` style.
 - **Silhouette quality.** Auto side points depend on canny/sobel head edges;
   poor lighting / busy backgrounds can yield **422**.
 - **Heavy models.** HED (~56MB caffemodel) and Proctoring_AI pose/face models
-  must stay on disk; paths are hard-coded relative to the repo root.
+  must stay on disk; paths are hard-coded relative to the repo root. The Docker
+  image excludes large weights by default — mount them or use `DEMO_MODE=1`.
 - **Python / TF friction.** Installing an old TF stack on current Python can be
   painful — use `DEMO_MODE=1` or mocked tests when you only need the HTTP shell.
 - **Not medical-grade.** Research / prototype accuracy only.
@@ -194,15 +250,20 @@ pytest -q
 ```
 
 Tests mock the pipeline / inject synthetic landmarks so CI does not need
-TensorFlow. OpenCV is used lightly for array shapes in side-unit tests.
+TensorFlow. Card-scale unit tests draw a synthetic ID-1 rectangle with OpenCV /
+numpy (no real video required).
 
 ## Project layout
 
 ```
 head_biometrics/     # FastAPI app + pipeline adapter
 src/                 # Original CV/TF measurement modules + model weights
-tests/               # pytest (health + mocked /v1/measure + side/scale units)
+  card_scale.py      # ISO ID-1 card auto-detect
+  scale_modes.py     # magstripe / card / mm_per_pixel / reference / ipd
+tests/               # pytest (health + mocked /v1/measure + side/scale/card units)
 Video_Tests/         # Sample video(s)
+Dockerfile           # Lean API image (models volume-mounted or DEMO_MODE)
+.dockerignore
 requirements.txt
 ```
 
