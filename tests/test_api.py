@@ -48,7 +48,7 @@ def test_scale_modes_catalog(client):
     assert resp.status_code == 200
     body = resp.json()
     ids = {m["id"] for m in body["modes"]}
-    assert {"magstripe", "card", "aruco", "mm_per_pixel", "reference_mm", "ipd"} <= ids
+    assert {"magstripe", "card", "aruco", "mm_per_pixel", "reference_mm", "ipd", "iris"} <= ids
     card = next(m for m in body["modes"] if m["id"] == "card")
     assert "id1_card" in card["aliases"]
     assert card["required_fields"] == []
@@ -57,6 +57,9 @@ def test_scale_modes_catalog(client):
     aruco = next(m for m in body["modes"] if m["id"] == "aruco")
     assert "aruco_marker_length_mm" in aruco["required_fields"]
     assert "aruco_dict" in aruco["optional_fields"]
+    iris = next(m for m in body["modes"] if m["id"] == "iris")
+    assert "iris_mm" in iris["optional_fields"]
+    assert iris["required_fields"] == []
 
 
 def test_measure_missing_file(client):
@@ -270,6 +273,38 @@ def test_measure_forwards_ipd_scale(client):
     assert opts.ipd_mm == pytest.approx(64.0)
 
 
+
+
+def test_measure_forwards_iris_scale(client):
+    mock_result = MeasurementResult(
+        circumference=560,
+        front_to_nape=340,
+        ear_to_ear=150,
+        head_width=155,
+        length=195,
+        demo_mode=False,
+        scale_mode="iris",
+        scale_note="iris prior",
+        confidence=0.35,
+        warnings=["Iris scale uses an adult iris-diameter prior"],
+    )
+    fake_video = ("clip.mp4", BytesIO(b"fake-video-bytes"), "video/mp4")
+
+    with patch("head_biometrics.app.measure_upload", return_value=mock_result) as mocked:
+        resp = client.post(
+            "/v1/measure",
+            files={"video": fake_video},
+            data={"scale_mode": "iris", "iris_mm": "11.7"},
+        )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["meta"]["scale_mode"] == "iris"
+    assert body["meta"]["scale_note"] == "iris prior"
+    opts = mocked.call_args.kwargs["scale_options"]
+    assert opts.iris_mm == pytest.approx(11.7)
+
+
 def test_measure_upload_too_large_413(client):
     fake_video = ("clip.mp4", BytesIO(b"fake-video-bytes"), "video/mp4")
 
@@ -324,6 +359,7 @@ def test_validate_scale_options_ok_modes():
         )
     )
     validate_scale_options(ScaleOptions(scale_mode="ipd", ipd_mm=63))
+    validate_scale_options(ScaleOptions(scale_mode="iris", iris_mm=11.7))
     validate_scale_options(
         ScaleOptions(
             scale_mode="aruco",
@@ -344,3 +380,15 @@ def test_compute_quality_meta_few_frames():
     conf, warns = compute_quality_meta(scale_mode="aruco", scale_frames_used=1)
     assert conf <= 0.55
     assert any("1 frame" in w for w in warns)
+
+
+def test_validate_scale_options_iris_bad():
+    with pytest.raises(DetectionError, match="iris_mm"):
+        validate_scale_options(ScaleOptions(scale_mode="iris", iris_mm=0))
+
+
+def test_compute_quality_meta_iris_caps_confidence():
+    conf, warns = compute_quality_meta(scale_mode="iris")
+    assert conf <= 0.40
+    assert any("Iris" in w or "iris" in w for w in warns)
+    assert any("heuristic" in w.lower() or "medical" in w.lower() for w in warns)

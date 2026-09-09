@@ -15,12 +15,18 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 DEFAULT_IPD_MM = 63.0
+# Adult horizontal iris diameter population prior (≈11.7 mm). Approximate only.
+DEFAULT_IRIS_MM = 11.7
+# Fallback fraction of outer→inner eye-corner width used when eyelid aperture
+# is degenerate (crude iris-diameter proxy; not a segmentation).
+IRIS_EYE_WIDTH_FRACTION = 0.45
 SCALE_MODES = frozenset(
     {
         "magstripe",
         "mm_per_pixel",
         "reference_mm",
         "ipd",
+        "iris",
         "card",
         "id1_card",
         "aruco",
@@ -134,6 +140,103 @@ def from_ipd(
     return as_pixel_mm(mm_per_pixel), note
 
 
+
+def estimate_iris_px(img) -> float:
+    """Crude iris-diameter proxy in pixels from 68-point eye landmarks.
+
+    **Approximate — not iris segmentation.**
+
+    Primary: mean vertical eyelid aperture using landmarks
+    ``||37−40||`` (left) and ``||43−46||`` (right) — a crude iris/pupil
+    aperture stand-in from upper/lower lid points near the iris.
+
+    Fallback: mean eye width (outer→inner corners ``36−39`` / ``42−45``)
+    times ``IRIS_EYE_WIDTH_FRACTION`` (default 0.45) when the aperture is
+    missing or degenerate.
+
+    Prefer magstripe / card / aruco / a measured reference when accuracy matters.
+    """
+    try:
+        from src.Proctoring_AI.face_detector import find_faces, get_face_detector
+        from src.Proctoring_AI.face_landmarks import detect_marks, get_landmark_model
+    except Exception as exc:  # noqa: BLE001
+        raise ScaleError(f"Face/landmark models unavailable for iris scale: {exc}") from exc
+
+    face_model = get_face_detector()
+    landmark_model = get_landmark_model()
+    faces = find_faces(img, face_model)
+    if not faces:
+        raise ScaleError("No face detected for iris scale.")
+    face = max(faces, key=lambda b: (b[2] - b[0]) * (b[3] - b[1]))
+    marks = detect_marks(img, landmark_model, face)
+    if marks is None or len(marks) < 47:
+        raise ScaleError("Facial landmarks incomplete for iris scale.")
+
+    # Vertical eyelid apertures (user-documented crude proxy).
+    left_ap = float(np.linalg.norm(marks[37].astype(float) - marks[40].astype(float)))
+    right_ap = float(np.linalg.norm(marks[43].astype(float) - marks[46].astype(float)))
+    apertures = [v for v in (left_ap, right_ap) if v > 1.0]
+
+    # Eye widths for fallback fraction.
+    left_w = float(np.linalg.norm(marks[36].astype(float) - marks[39].astype(float)))
+    right_w = float(np.linalg.norm(marks[42].astype(float) - marks[45].astype(float)))
+    widths = [v for v in (left_w, right_w) if v > 1.0]
+
+    if apertures:
+        iris_px = float(np.mean(apertures))
+    elif widths:
+        iris_px = float(np.mean(widths)) * float(IRIS_EYE_WIDTH_FRACTION)
+    else:
+        raise ScaleError("Degenerate eye landmarks for iris scale.")
+
+    if iris_px <= 1.0:
+        raise ScaleError(f"Degenerate iris pixel diameter: {iris_px}")
+    return iris_px
+
+
+def best_iris_px(img_array: Sequence) -> float:
+    """Max iris-px estimate across frames (most frontal ≈ largest projection)."""
+    best: Optional[float] = None
+    last_err: Optional[Exception] = None
+    for img in img_array:
+        try:
+            px = estimate_iris_px(img)
+            if best is None or px > best:
+                best = px
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            continue
+    if best is None:
+        detail = f" Last error: {last_err}" if last_err else ""
+        raise ScaleError(
+            "Could not estimate iris diameter from any video frame." + detail
+        )
+    return best
+
+
+def from_iris(
+    img_array: Sequence,
+    iris_mm: float = DEFAULT_IRIS_MM,
+) -> Tuple[list, str]:
+    """Return (pixel_mm, scale_note) using an adult iris-diameter prior in mm.
+
+    Adult horizontal iris diameter ≈ 11.7 mm is a **population prior** —
+    approximate only (see ``estimate_iris_px`` for the landmark proxy).
+    """
+    if iris_mm is None or float(iris_mm) <= 0:
+        raise ScaleError("iris_mm must be a positive float.")
+    iris_px = best_iris_px(img_array)
+    mm_per_pixel = float(iris_mm) / float(iris_px)
+    note = (
+        f"Scale from adult iris-diameter prior (iris_mm={float(iris_mm)}, "
+        f"iris_px={iris_px:.1f}). Landmark proxy: eyelid aperture 37−40 / 43−46 "
+        f"(fallback: eye-width × {IRIS_EYE_WIDTH_FRACTION}). Approximate "
+        "population prior — less accurate than magstripe / card / aruco / "
+        "a measured reference; not medical-grade."
+    )
+    return as_pixel_mm(mm_per_pixel), note
+
+
 def from_magstripe(img_array: Sequence) -> list:
     from src.video_to_mm import video_to_pixel_mm
 
@@ -145,7 +248,7 @@ def from_magstripe(img_array: Sequence) -> list:
         raise ScaleError(
             "Magstripe scale detection failed. Ensure a credit-card-style "
             "magnetic stripe is visible, or use scale_mode=card / aruco / "
-            "mm_per_pixel / reference_mm / ipd. "
+            "mm_per_pixel / reference_mm / ipd / iris. "
             f"Details: {exc}"
         ) from exc
     if pixel_mm is None or (hasattr(pixel_mm, "__len__") and len(pixel_mm) == 0):
@@ -188,7 +291,7 @@ def from_card(img_array: Sequence) -> Tuple[list, str, int]:
         raise ScaleError(
             "ISO ID-1 card scale detection failed. Show a full credit/ID card "
             "flat and fully visible in frame (85.60×53.98 mm), or use "
-            "aruco / mm_per_pixel / reference_mm / ipd / magstripe instead. "
+            "aruco / mm_per_pixel / reference_mm / ipd / iris / magstripe instead. "
             f"Details: {exc}"
         ) from exc
     except (ValueError, TypeError, IndexError) as exc:

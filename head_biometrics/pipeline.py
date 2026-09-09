@@ -29,7 +29,7 @@ CIRCUMFERENCE_FACTOR = 0.834626841674
 
 # Canonical modes after alias normalization (id1_card → card).
 VALID_SCALE_MODES = frozenset(
-    {"magstripe", "mm_per_pixel", "reference_mm", "ipd", "card", "aruco"}
+    {"magstripe", "mm_per_pixel", "reference_mm", "ipd", "iris", "card", "aruco"}
 )
 
 # Default upload limit (bytes). Overridable via env for ops.
@@ -83,6 +83,7 @@ class ScaleOptions:
     reference_width_mm: Optional[float] = None
     reference_width_px: Optional[float] = None
     ipd_mm: float = 63.0
+    iris_mm: float = 11.7
     aruco_dict: Optional[str] = "4x4_50"
     aruco_marker_length_mm: Optional[float] = None
 
@@ -144,6 +145,13 @@ def compute_quality_meta(
         warnings.append(
             "IPD scale uses a population prior (≈63 mm adult mean) — approximate only; "
             "prefer magstripe, card, aruco, or a measured reference when accuracy matters."
+        )
+    elif mode == "iris":
+        conf = min(conf, 0.35)
+        warnings.append(
+            "Iris scale uses an adult iris-diameter prior (≈11.7 mm) and a crude "
+            "eyelid-landmark aperture proxy — approximate only; prefer magstripe, "
+            "card, aruco, or a measured reference when accuracy matters."
         )
     elif mode == "mm_per_pixel":
         conf = min(conf, 0.90)
@@ -266,6 +274,9 @@ def validate_scale_options(opts: ScaleOptions) -> None:
     elif mode == "ipd":
         if opts.ipd_mm is None or float(opts.ipd_mm) <= 0:
             raise DetectionError("ipd_mm must be a positive float (default 63).")
+    elif mode == "iris":
+        if opts.iris_mm is None or float(opts.iris_mm) <= 0:
+            raise DetectionError("iris_mm must be a positive float (default 11.7).")
     elif mode == "aruco":
         if opts.aruco_marker_length_mm is None:
             raise DetectionError(
@@ -287,6 +298,7 @@ def resolve_pixel_mm(img_array: Sequence, opts: ScaleOptions, scale_modes_mod):
             reference_width_mm=opts.reference_width_mm,
             reference_width_px=opts.reference_width_px,
             ipd_mm=opts.ipd_mm if opts.ipd_mm is not None else 63.0,
+            iris_mm=opts.iris_mm if opts.iris_mm is not None else 11.7,
             aruco_dict=opts.aruco_dict,
             aruco_marker_length_mm=opts.aruco_marker_length_mm,
         )
@@ -311,6 +323,10 @@ def resolve_pixel_mm(img_array: Sequence, opts: ScaleOptions, scale_modes_mod):
         if mode == "ipd":
             ipd_mm = float(opts.ipd_mm) if opts.ipd_mm is not None else 63.0
             pixel_mm, note = scale_modes_mod.from_ipd(img_array, ipd_mm=ipd_mm)
+            return pixel_mm, note, None
+        if mode == "iris":
+            iris_mm = float(opts.iris_mm) if opts.iris_mm is not None else 11.7
+            pixel_mm, note = scale_modes_mod.from_iris(img_array, iris_mm=iris_mm)
             return pixel_mm, note, None
         if mode == "card":
             pixel_mm, note, n = scale_modes_mod.from_card(img_array)
@@ -369,6 +385,7 @@ def run_measurements(
                     reference_width_mm=opts.reference_width_mm,
                     reference_width_px=opts.reference_width_px,
                     ipd_mm=opts.ipd_mm if opts.ipd_mm is not None else 63.0,
+                    iris_mm=opts.iris_mm if opts.iris_mm is not None else 11.7,
                     aruco_dict=opts.aruco_dict,
                     aruco_marker_length_mm=opts.aruco_marker_length_mm,
                 )
