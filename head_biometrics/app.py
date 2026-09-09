@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Optional, Tuple
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from head_biometrics import __version__
+from head_biometrics.auth import require_api_key
 from head_biometrics.jobs import get_job, submit_measure_job
+from head_biometrics import metrics as metrics_mod
 from head_biometrics.models import (
     HealthResponse,
     JobCreateResponse,
@@ -66,6 +69,17 @@ if _cors_raw:
             allow_headers=["*"],
         )
         logger.info("CORS enabled for origins: %s", _origins)
+
+
+@app.middleware("http")
+async def metrics_and_access_middleware(request: Request, call_next):
+    started = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - started) * 1000.0
+    path = request.url.path
+    metrics_mod.record_request(path, request.method, response.status_code, duration_ms)
+    return response
+
 
 SCALE_MODE_CATALOG = [
     ScaleModeInfo(
@@ -269,6 +283,18 @@ def version() -> VersionResponse:
 
 
 @app.get(
+    "/metrics",
+    summary="Basic JSON metrics counters",
+    description=(
+        "In-process counters: requests_total, measure_success, measure_failure, "
+        "jobs_created. Resets on process restart (stdlib JSON — no prometheus_client)."
+    ),
+)
+def metrics() -> dict:
+    return metrics_mod.snapshot()
+
+
+@app.get(
     "/v1/scale-modes",
     response_model=ScaleModesResponse,
     summary="List available scale modes",
@@ -296,13 +322,16 @@ def list_scale_modes() -> ScaleModesResponse:
         "- iris: optional iris_mm (default 11.7); approximate eyelid-landmark proxy\n\n"
         "For long videos prefer POST /v1/measure/jobs (async). "
         "Responses include heuristic meta.confidence and meta.warnings "
-        "(non-blocking; not medical-grade). Uploads larger than 100 MB → HTTP 413."
+        "(non-blocking; not medical-grade). Uploads larger than 100 MB → HTTP 413. "
+        "When env API_KEY is set, require X-API-Key or Authorization: Bearer."
     ),
     responses={
+        401: {"description": "API key required / invalid"},
         413: {"description": "Upload too large"},
         422: {"description": "Detection / scale / validation failure"},
         503: {"description": "CV/TF dependencies unavailable"},
     },
+    dependencies=[Depends(require_api_key)],
 )
 async def measure(
     request: Request,
@@ -377,10 +406,13 @@ async def measure(
             max_bytes=MAX_UPLOAD_BYTES,
         )
     except UploadTooLargeError as exc:
+        metrics_mod.record_measure_outcome(False)
         raise HTTPException(status_code=413, detail=str(exc)) from exc
     except DetectionError as exc:
+        metrics_mod.record_measure_outcome(False)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except DependencyError as exc:
+        metrics_mod.record_measure_outcome(False)
         raise HTTPException(
             status_code=503,
             detail=(
@@ -389,14 +421,17 @@ async def measure(
             ),
         ) from exc
     except PipelineError as exc:
+        metrics_mod.record_measure_outcome(False)
         logger.exception("Pipeline error")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
+        metrics_mod.record_measure_outcome(False)
         logger.exception("Unexpected failure in /v1/measure")
         raise HTTPException(
             status_code=500, detail=f"Unexpected server error: {exc}"
         ) from exc
 
+    metrics_mod.record_measure_outcome(True)
     return _build_measure_response(
         result,
         clockwise=clockwise,
@@ -413,13 +448,17 @@ async def measure(
         "Same multipart form fields as POST /v1/measure, but returns immediately "
         "with {job_id, status: queued}. Poll GET /v1/measure/jobs/{job_id} for "
         "queued|running|succeeded|failed.\n\n"
-        "**MVP limitation:** jobs are stored in-process memory and are NOT safe "
-        "across multiple uvicorn workers or processes. Use a single worker for "
-        "this MVP, or replace the store for production."
+        "**Store:** ``JOB_STORE=memory`` (default) or ``sqlite`` "
+        "(``JOB_STORE_PATH``, default ``./data/jobs.sqlite3``). SQLite persists "
+        "status/result/error across restarts; workers are still in-process — "
+        "**not multi-worker safe**. Use a single uvicorn worker for this MVP.\n\n"
+        "When env API_KEY is set, require X-API-Key or Authorization: Bearer."
     ),
     responses={
+        401: {"description": "API key required / invalid"},
         413: {"description": "Upload too large"},
     },
+    dependencies=[Depends(require_api_key)],
 )
 async def measure_job_create(
     request: Request,
@@ -454,6 +493,7 @@ async def measure_job_create(
         scale_options=scale_options,
         max_bytes=MAX_UPLOAD_BYTES,
     )
+    metrics_mod.record_job_created()
     return JobCreateResponse(job_id=record.job_id, status="queued")
 
 
@@ -463,9 +503,14 @@ async def measure_job_create(
     summary="Get async measurement job status / result",
     description=(
         "Poll until status is succeeded (result present) or failed (error present). "
-        "In-memory store — not multi-worker safe (MVP)."
+        "Job store is single-process (memory or sqlite); not multi-worker safe. "
+        "When env API_KEY is set, require X-API-Key or Authorization: Bearer."
     ),
-    responses={404: {"description": "Unknown job_id"}},
+    responses={
+        401: {"description": "API key required / invalid"},
+        404: {"description": "Unknown job_id"},
+    },
+    dependencies=[Depends(require_api_key)],
 )
 def measure_job_status(job_id: str) -> JobStatusResponse:
     record = get_job(job_id)
