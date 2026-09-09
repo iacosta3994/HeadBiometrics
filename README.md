@@ -4,7 +4,7 @@ HTTP API (FastAPI) over a ~2020 OpenCV / TensorFlow pipeline that estimates head
 dimensions (circumference, front-to-nape, ear-to-ear, width, length) from a
 cellphone video. Scale can come from a **magnetic stripe**, a full **ISO ID-1
 credit/ID card**, a printed **ArUco marker**, an explicit mm/pixel value, a
-known reference object, or an IPD population prior.
+known reference object, an IPD population prior, or an iris-diameter prior.
 
 The original scripts live under `src/` and remain available. The new service
 package is `head_biometrics/`.
@@ -15,10 +15,11 @@ package is `head_biometrics/`.
 - `GET /version` — package version
 - `GET /v1/scale-modes` — catalog of scale modes + required form fields
 - `POST /v1/measure` — multipart video upload → JSON millimeter measurements
+- `POST /v1/measure/jobs` + `GET /v1/measure/jobs/{job_id}` — async jobs for long videos
 - **Headless end-to-end** — side metrics auto-select points via landmarks +
   silhouette (no OpenCV GUI / mouse picks required for the API)
 - **Scale modes** — `magstripe` (default), `card` / `id1_card`, `aruco`,
-  `mm_per_pixel`, `reference_mm`, `ipd`
+  `mm_per_pixel`, `reference_mm`, `ipd`, `iris`
 - **Quality meta** — heuristic `meta.confidence` (0–1) + `meta.warnings`
   (non-blocking; not calibrated / not medical-grade)
 - Upload size guard — uploads over **100 MB** → HTTP **413**
@@ -122,6 +123,7 @@ Optional: `-e CORS_ORIGINS='*'`.
 | `mm_per_pixel`   | `mm_per_pixel` (float > 0)                   | Caller supplies millimeters per pixel; skips auto detection. |
 | `reference_mm`   | `reference_width_mm`, `reference_width_px`   | Known object width in mm and its measured width in px. Prefer `card` / `aruco` for automatic detection. |
 | `ipd`            | optional `ipd_mm` (default **63**)           | Interpupillary distance from eye landmarks vs adult mean prior. **Approximate** — see `meta.scale_note` / `warnings`. |
+| `iris`           | optional `iris_mm` (default **11.7**)        | Adult iris-diameter prior vs crude eyelid-landmark aperture (`37–40` / `43–46`; fallback eye-width × 0.45). **Approximate** — lower confidence; not medical-grade. |
 
 List modes programmatically:
 
@@ -159,6 +161,39 @@ Implementation: `src/aruco_scale.py`.
 
 Print a marker, measure its physical side in mm, and pass that as
 `aruco_marker_length_mm`. No marker → **422**.
+
+
+### Iris mode details
+
+Implementation: `src/scale_modes.py` (`estimate_iris_px` / `from_iris`).
+
+Adult horizontal iris diameter ≈ **11.7 mm** is a **population prior**
+(configurable via `iris_mm`). Pixel size is a **crude landmark proxy**, not iris
+segmentation:
+
+1. Primary: mean vertical eyelid aperture `||landmark[37]−[40]||` (left) and
+   `||[43]−[46]||` (right)
+2. Fallback: mean outer→inner eye-corner width × **0.45** when the aperture is
+   degenerate
+3. `mm_per_pixel = iris_mm / iris_px` (best/max across frames)
+
+Confidence is capped like IPD; prefer magstripe / card / aruco / a measured
+reference when accuracy matters. **Not medical-grade.**
+
+### Async measurement jobs
+
+Long videos can block `POST /v1/measure`. Use the job endpoints instead:
+
+1. `POST /v1/measure/jobs` — same multipart form fields as `/v1/measure`;
+   returns `{ "job_id": "...", "status": "queued" }` immediately
+2. `GET /v1/measure/jobs/{job_id}` — poll until `status` is `succeeded`
+   (`result` present) or `failed` (`error` present). Intermediate values:
+   `queued` | `running`
+
+**MVP limitation:** the job store is **in-process memory** (thread pool). It is
+**not** safe across multiple uvicorn workers or processes — use a single worker
+for this MVP, or replace the store (e.g. Redis) for production. Sync
+`POST /v1/measure` remains unchanged.
 
 ## Example curl
 
@@ -203,6 +238,21 @@ curl -s -X POST http://127.0.0.1:8000/v1/measure \
   -F "video=@Video_Tests/Self.mp4;type=video/mp4" \
   -F "scale_mode=ipd" \
   -F "ipd_mm=63" | jq
+
+# measure with iris-diameter prior (approximate; default 11.7 mm)
+curl -s -X POST http://127.0.0.1:8000/v1/measure \
+  -F "video=@Video_Tests/Self.mp4;type=video/mp4" \
+  -F "scale_mode=iris" \
+  -F "iris_mm=11.7" | jq
+
+# async job (long videos) — enqueue then poll
+JOB=$(curl -s -X POST http://127.0.0.1:8000/v1/measure/jobs \
+  -F "video=@Video_Tests/Self.mp4;type=video/mp4" \
+  -F "scale_mode=mm_per_pixel" \
+  -F "mm_per_pixel=0.25")
+echo "$JOB" | jq
+JOB_ID=$(echo "$JOB" | jq -r .job_id)
+curl -s "http://127.0.0.1:8000/v1/measure/jobs/$JOB_ID" | jq
 
 # measure with known reference object (client supplies px width)
 curl -s -X POST http://127.0.0.1:8000/v1/measure \
@@ -250,7 +300,7 @@ Example success payload:
 Same logic as `src/main.py` `run()`, plus scale-mode resolution:
 
 1. Split video frames (`key_frame_extraction`) — optional 90° rotate for portrait
-2. Resolve scale → mm per pixel (`magstripe` / `card` / `aruco` / `mm_per_pixel` / `reference_mm` / `ipd`)
+2. Resolve scale → mm per pixel (`magstripe` / `card` / `aruco` / `mm_per_pixel` / `reference_mm` / `ipd` / `iris`)
 3. Pick narrow (front) / wide (side) frames via face + head-pose models
 4. Front metrics (`front_quantify`) → ear-to-ear, head width
 5. Side metrics (`side_quantify`, **headless**) → front-to-nape, length
@@ -285,6 +335,11 @@ three).
 - **IPD scale is approximate.** Adult mean ≈ 63 mm is a population prior;
   confidence is capped and warnings always mention this. Prefer magstripe,
   card, aruco, or a measured reference when accuracy matters.
+- **Iris scale is approximate.** Adult iris ≈ 11.7 mm prior + crude eyelid
+  landmark aperture (not iris segmentation). Confidence capped; same preference
+  for physical references.
+- **Async jobs are single-process MVP.** In-memory store + thread pool — not
+  multi-worker safe. Sync `/v1/measure` is unchanged.
 - **Confidence is heuristic.** `meta.confidence` / `warnings` inform clients;
   they are **not** calibrated and **not** medical-grade.
 - **Reference object.** `reference_mm` still requires the client to supply
@@ -309,17 +364,22 @@ pytest -q
 
 Tests mock the pipeline / inject synthetic landmarks so CI does not need
 TensorFlow. Card-scale unit tests draw synthetic ID-1 rectangles (including
-rotated quads). ArUco tests use `cv2.aruco.generateImageMarker`.
+rotated quads). ArUco tests use `cv2.aruco.generateImageMarker`. Iris tests
+mock eyelid landmarks. Async job tests mock `measure_upload` and poll status.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs `pip install -r requirements.txt`
++ `pytest` on Python 3.12 (no TensorFlow).
 
 ## Project layout
 
 ```
-head_biometrics/     # FastAPI app + pipeline adapter
+head_biometrics/     # FastAPI app + pipeline adapter + async jobs
 src/                 # Original CV/TF measurement modules + model weights
   aruco_scale.py     # ArUco marker auto-detect
   card_scale.py      # ISO ID-1 card auto-detect
-  scale_modes.py     # magstripe / card / aruco / mm_per_pixel / reference / ipd
-tests/               # pytest (health + mocked /v1/measure + side/scale/card/aruco)
+  scale_modes.py     # magstripe / card / aruco / mm_per_pixel / reference / ipd / iris
+tests/               # pytest (health + mocked measure/jobs + side/scale/card/aruco/iris)
+.github/workflows/   # CI (Python 3.12 + pytest, no TF)
 Video_Tests/         # Sample video(s)
 Dockerfile           # Lean API image (models volume-mounted or DEMO_MODE)
 .dockerignore
