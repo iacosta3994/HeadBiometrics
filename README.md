@@ -13,6 +13,8 @@ package is `head_biometrics/`.
 
 - `GET /health` — liveness check (includes `version`; works without TensorFlow)
 - `GET /version` — package version
+- `GET /metrics` — JSON counters (`requests_total`, `measure_success`,
+  `measure_failure`, `jobs_created`)
 - `GET /v1/scale-modes` — catalog of scale modes + required form fields
 - `POST /v1/measure` — multipart video upload → JSON millimeter measurements
 - `POST /v1/measure/jobs` + `GET /v1/measure/jobs/{job_id}` — async jobs for long videos
@@ -23,10 +25,15 @@ package is `head_biometrics/`.
 - **Quality meta** — heuristic `meta.confidence` (0–1) + `meta.warnings`
   (non-blocking; not calibrated / not medical-grade)
 - Upload size guard — uploads over **100 MB** → HTTP **413**
+- Optional `API_KEY` — require `X-API-Key` or `Authorization: Bearer` on measure
+  endpoints (`/health`, `/version`, `/metrics`, `/v1/scale-modes` stay open)
+- Optional `JOB_STORE=memory|sqlite` — durable job status/result via SQLite
 - Optional `CORS_ORIGINS` env (e.g. `*` or `https://app.example.com`)
 - Optional `DEMO_MODE=1` — labeled mock response when the CV stack cannot import
+- Client helpers under `examples/` (curl + minimal Python)
 - Optional `Dockerfile` for a lean API image
 - Legacy CLI path: `python -m src.main` (from repo root)
+- **Current API package version:** `0.6.0`
 
 ## Requirements
 
@@ -93,6 +100,52 @@ CORS_ORIGINS='https://app.example.com,https://staging.example.com' \
   uvicorn head_biometrics.app:app --port 8000
 ```
 
+### Optional API key
+
+```bash
+API_KEY='your-secret' uvicorn head_biometrics.app:app --port 8000
+```
+
+When `API_KEY` is set, measure endpoints (`POST /v1/measure`,
+`POST /v1/measure/jobs`, `GET /v1/measure/jobs/{id}`) require either:
+
+```bash
+curl -H "X-API-Key: your-secret" ...
+# or
+curl -H "Authorization: Bearer your-secret" ...
+```
+
+`/health`, `/version`, `/metrics`, and `/v1/scale-modes` stay open. Missing or
+wrong key → HTTP **401**.
+
+### Durable job store (SQLite)
+
+```bash
+JOB_STORE=sqlite JOB_STORE_PATH=./data/jobs.sqlite3 \
+  uvicorn head_biometrics.app:app --port 8000 --workers 1
+```
+
+Default remains `JOB_STORE=memory`.
+
+### Metrics
+
+```bash
+curl -s http://127.0.0.1:8000/metrics | jq
+# {"requests_total":..., "measure_success":..., "measure_failure":..., "jobs_created":...}
+```
+
+In-process counters (reset on restart). Measure endpoints also emit a structured
+access log line (`head_biometrics.access`).
+
+### Client examples
+
+```bash
+./examples/measure.sh Video_Tests/Self.mp4 mm_per_pixel
+./examples/measure_async.sh Video_Tests/Self.mp4 mm_per_pixel
+python examples/measure_client.py Video_Tests/Self.mp4 --scale-mode mm_per_pixel
+API_KEY=secret python examples/measure_client.py clip.mp4 --async
+```
+
 ### Docker
 
 ```bash
@@ -111,7 +164,7 @@ docker run --rm -p 8000:8000 \
 ```
 
 Override the upload limit with `-e MAX_UPLOAD_BYTES=...` (default 104857600 = 100 MB).
-Optional: `-e CORS_ORIGINS='*'`.
+Optional: `-e CORS_ORIGINS='*'`, `-e API_KEY=...`, `-e JOB_STORE=sqlite -e JOB_STORE_PATH=/data/jobs.sqlite3`.
 
 ## Scale modes
 
@@ -190,10 +243,18 @@ Long videos can block `POST /v1/measure`. Use the job endpoints instead:
    (`result` present) or `failed` (`error` present). Intermediate values:
    `queued` | `running`
 
-**MVP limitation:** the job store is **in-process memory** (thread pool). It is
-**not** safe across multiple uvicorn workers or processes — use a single worker
-for this MVP, or replace the store (e.g. Redis) for production. Sync
-`POST /v1/measure` remains unchanged.
+**Store backends** (still **single-process** — thread pool is in-process; not
+safe across multiple uvicorn workers):
+
+| Env | Default | Notes |
+|-----|---------|-------|
+| `JOB_STORE` | `memory` | In-process dict; lost on restart |
+| `JOB_STORE=sqlite` | — | Persist status/result/error |
+| `JOB_STORE_PATH` | `./data/jobs.sqlite3` | SQLite file path |
+
+SQLite survives process restart for terminal jobs; orphaned `queued`/`running`
+rows from a crash are marked `failed` on store open. Use a **single uvicorn
+worker** for this MVP. Sync `POST /v1/measure` remains unchanged.
 
 ## Example curl
 
@@ -338,8 +399,10 @@ three).
 - **Iris scale is approximate.** Adult iris ≈ 11.7 mm prior + crude eyelid
   landmark aperture (not iris segmentation). Confidence capped; same preference
   for physical references.
-- **Async jobs are single-process MVP.** In-memory store + thread pool — not
-  multi-worker safe. Sync `/v1/measure` is unchanged.
+- **Async jobs are single-process MVP.** Thread pool + `memory` or `sqlite`
+  store — not multi-worker safe. SQLite persists terminal results across
+  restarts; use one uvicorn worker. Sync `/v1/measure` is unchanged.
+- **API_KEY is shared-secret only.** No per-user accounts / rotation helpers.
 - **Confidence is heuristic.** `meta.confidence` / `warnings` inform clients;
   they are **not** calibrated and **not** medical-grade.
 - **Reference object.** `reference_mm` still requires the client to supply
@@ -366,6 +429,8 @@ Tests mock the pipeline / inject synthetic landmarks so CI does not need
 TensorFlow. Card-scale unit tests draw synthetic ID-1 rectangles (including
 rotated quads). ArUco tests use `cv2.aruco.generateImageMarker`. Iris tests
 mock eyelid landmarks. Async job tests mock `measure_upload` and poll status.
+SQLite store tests use a temp `JOB_STORE_PATH`. Auth/metrics tests cover
+`API_KEY` and `/metrics` counters.
 
 A lean GitHub Actions workflow lives at `ci/github-actions.yml` (Python 3.12,
 `pip install -r requirements.txt`, `pytest` — no TensorFlow). Copy it to
@@ -375,12 +440,13 @@ with the `workflow` scope).
 ## Project layout
 
 ```
-head_biometrics/     # FastAPI app + pipeline adapter + async jobs
+head_biometrics/     # FastAPI app + pipeline adapter + async jobs + auth/metrics
 src/                 # Original CV/TF measurement modules + model weights
   aruco_scale.py     # ArUco marker auto-detect
   card_scale.py      # ISO ID-1 card auto-detect
   scale_modes.py     # magstripe / card / aruco / mm_per_pixel / reference / ipd / iris
-tests/               # pytest (health + mocked measure/jobs + side/scale/card/aruco/iris)
+examples/            # curl + Python measure clients
+tests/               # pytest (API/auth/metrics/jobs/sqlite + scale/card/aruco/iris)
 ci/github-actions.yml  # CI template → copy to .github/workflows/ci.yml
 Video_Tests/         # Sample video(s)
 Dockerfile           # Lean API image (models volume-mounted or DEMO_MODE)
