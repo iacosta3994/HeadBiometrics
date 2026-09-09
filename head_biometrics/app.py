@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
+from typing import Optional, Tuple
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from head_biometrics import __version__
+from head_biometrics.jobs import get_job, submit_measure_job
 from head_biometrics.models import (
     HealthResponse,
+    JobCreateResponse,
+    JobStatusResponse,
     MeasureMeta,
     MeasureResponse,
     MeasurementsMm,
@@ -25,6 +28,7 @@ from head_biometrics.pipeline import (
     MAX_UPLOAD_BYTES,
     DependencyError,
     DetectionError,
+    MeasurementResult,
     PipelineError,
     ScaleOptions,
     UploadTooLargeError,
@@ -41,8 +45,10 @@ app = FastAPI(
         "pipeline. Scale can come from a magstripe card, a full ISO ID-1 "
         "credit/ID card (scale_mode=card), a printed ArUco marker "
         "(scale_mode=aruco), an explicit mm/pixel value, a known reference "
-        "object width, or an IPD population prior. Confidence/warnings in "
-        "meta are heuristic only — not medical-grade."
+        "object width, an IPD population prior, or an iris-diameter prior "
+        "(scale_mode=iris). Long videos can use async jobs at "
+        "POST /v1/measure/jobs. Confidence/warnings in meta are heuristic "
+        "only — not medical-grade."
     ),
     version=__version__,
 )
@@ -124,7 +130,126 @@ SCALE_MODE_CATALOG = [
             "(default ipd_mm=63). Approximate — see meta.scale_note / warnings."
         ),
     ),
+    ScaleModeInfo(
+        id="iris",
+        aliases=[],
+        required_fields=[],
+        optional_fields=["iris_mm"],
+        description=(
+            "Adult iris-diameter prior (default iris_mm=11.7) vs crude landmark "
+            "proxy (eyelid aperture 37-40 / 43-46; fallback eye-width fraction). "
+            "Approximate population prior — lower confidence like IPD; not "
+            "medical-grade."
+        ),
+    ),
 ]
+
+
+def _build_measure_response(
+    result: MeasurementResult,
+    *,
+    clockwise: bool,
+    filename: Optional[str],
+    scale_mode_fallback: str,
+) -> MeasureResponse:
+    return MeasureResponse(
+        measurements_mm=MeasurementsMm(
+            circumference=result.circumference,
+            front_to_nape=result.front_to_nape,
+            ear_to_ear=result.ear_to_ear,
+            head_width=result.head_width,
+            length=result.length,
+        ),
+        meta=MeasureMeta(
+            clockwise=clockwise,
+            filename=filename,
+            demo_mode=result.demo_mode,
+            note=result.note,
+            scale_mode=result.scale_mode or scale_mode_fallback,
+            scale_note=result.scale_note,
+            mm_per_pixel=result.mm_per_pixel,
+            confidence=result.confidence,
+            warnings=list(result.warnings or []),
+            scale_frames_used=result.scale_frames_used,
+        ),
+    )
+
+
+def _parse_scale_options(
+    *,
+    scale_mode: str,
+    mm_per_pixel: Optional[float],
+    reference_width_mm: Optional[float],
+    reference_width_px: Optional[float],
+    ipd_mm: Optional[float],
+    iris_mm: Optional[float],
+    aruco_dict: Optional[str],
+    aruco_marker_length_mm: Optional[float],
+) -> ScaleOptions:
+    return ScaleOptions(
+        scale_mode=(scale_mode or "magstripe").strip().lower(),
+        mm_per_pixel=mm_per_pixel,
+        reference_width_mm=reference_width_mm,
+        reference_width_px=reference_width_px,
+        ipd_mm=63.0 if ipd_mm is None else float(ipd_mm),
+        iris_mm=11.7 if iris_mm is None else float(iris_mm),
+        aruco_dict=(aruco_dict or "4x4_50").strip() if aruco_dict else "4x4_50",
+        aruco_marker_length_mm=aruco_marker_length_mm,
+    )
+
+
+async def _read_upload_capped(
+    video: UploadFile,
+    request: Request,
+    max_bytes: int = MAX_UPLOAD_BYTES,
+) -> Tuple[bytes, Optional[str]]:
+    """Validate upload metadata and read body with a hard size cap."""
+    if video is None:
+        raise HTTPException(status_code=400, detail="Missing video file upload.")
+
+    filename: Optional[str] = video.filename
+    content_type = (video.content_type or "").lower()
+
+    if filename is None or filename.strip() == "":
+        raise HTTPException(status_code=400, detail="Uploaded file must have a filename.")
+
+    if content_type and not (
+        content_type.startswith("video/")
+        or content_type in {"application/octet-stream", "application/mp4"}
+    ):
+        logger.info("Unusual content-type for upload: %s", content_type)
+
+    cl = request.headers.get("content-length")
+    if cl is not None:
+        try:
+            if int(cl) > max_bytes:
+                raise HTTPException(
+                    status_code=413,
+                    detail=(
+                        f"Upload exceeds maximum size of {max_bytes} bytes "
+                        f"({max_bytes // (1024 * 1024)} MB)."
+                    ),
+                )
+        except ValueError:
+            pass
+
+    chunks = []
+    total = 0
+    while True:
+        chunk = await video.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"Upload exceeds maximum size of {max_bytes} bytes "
+                    f"({max_bytes // (1024 * 1024)} MB)."
+                ),
+            )
+        chunks.append(chunk)
+    return b"".join(chunks), filename
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -147,7 +272,10 @@ def version() -> VersionResponse:
     "/v1/scale-modes",
     response_model=ScaleModesResponse,
     summary="List available scale modes",
-    description="Catalog of scale_mode values accepted by POST /v1/measure and their required form fields.",
+    description=(
+        "Catalog of scale_mode values accepted by POST /v1/measure and "
+        "POST /v1/measure/jobs and their required form fields."
+    ),
 )
 def list_scale_modes() -> ScaleModesResponse:
     return ScaleModesResponse(modes=SCALE_MODE_CATALOG)
@@ -164,7 +292,9 @@ def list_scale_modes() -> ScaleModesResponse:
         "- aruco: require aruco_marker_length_mm; optional aruco_dict (default 4x4_50)\n"
         "- mm_per_pixel: require form mm_per_pixel\n"
         "- reference_mm: require reference_width_mm + reference_width_px\n"
-        "- ipd: optional ipd_mm (default 63)\n\n"
+        "- ipd: optional ipd_mm (default 63)\n"
+        "- iris: optional iris_mm (default 11.7); approximate eyelid-landmark proxy\n\n"
+        "For long videos prefer POST /v1/measure/jobs (async). "
         "Responses include heuristic meta.confidence and meta.warnings "
         "(non-blocking; not medical-grade). Uploads larger than 100 MB → HTTP 413."
     ),
@@ -185,7 +315,7 @@ async def measure(
         "magstripe",
         description=(
             "Scale source: magstripe | card | id1_card | aruco | mm_per_pixel | "
-            "reference_mm | ipd"
+            "reference_mm | ipd | iris"
         ),
     ),
     mm_per_pixel: Optional[float] = Form(
@@ -204,6 +334,13 @@ async def measure(
         63.0,
         description="IPD prior in mm for scale_mode=ipd (default adult mean 63)",
     ),
+    iris_mm: Optional[float] = Form(
+        11.7,
+        description=(
+            "Iris-diameter prior in mm for scale_mode=iris "
+            "(default adult ≈ 11.7; approximate)"
+        ),
+    ),
     aruco_dict: Optional[str] = Form(
         "4x4_50",
         description="ArUco dictionary for scale_mode=aruco (default 4x4_50; also 5x5_100)",
@@ -216,48 +353,24 @@ async def measure(
         ),
     ),
 ) -> MeasureResponse:
-    if video is None:
-        raise HTTPException(status_code=400, detail="Missing video file upload.")
+    from io import BytesIO
 
-    filename: Optional[str] = video.filename
-    content_type = (video.content_type or "").lower()
+    file_bytes, filename = await _read_upload_capped(video, request)
 
-    if filename is None or filename.strip() == "":
-        raise HTTPException(status_code=400, detail="Uploaded file must have a filename.")
-
-    if content_type and not (
-        content_type.startswith("video/")
-        or content_type in {"application/octet-stream", "application/mp4"}
-    ):
-        logger.info("Unusual content-type for upload: %s", content_type)
-
-    cl = request.headers.get("content-length")
-    if cl is not None:
-        try:
-            if int(cl) > MAX_UPLOAD_BYTES:
-                raise HTTPException(
-                    status_code=413,
-                    detail=(
-                        f"Upload exceeds maximum size of {MAX_UPLOAD_BYTES} bytes "
-                        f"({MAX_UPLOAD_BYTES // (1024 * 1024)} MB)."
-                    ),
-                )
-        except ValueError:
-            pass
-
-    scale_options = ScaleOptions(
-        scale_mode=(scale_mode or "magstripe").strip().lower(),
+    scale_options = _parse_scale_options(
+        scale_mode=scale_mode,
         mm_per_pixel=mm_per_pixel,
         reference_width_mm=reference_width_mm,
         reference_width_px=reference_width_px,
-        ipd_mm=63.0 if ipd_mm is None else float(ipd_mm),
-        aruco_dict=(aruco_dict or "4x4_50").strip() if aruco_dict else "4x4_50",
+        ipd_mm=ipd_mm,
+        iris_mm=iris_mm,
+        aruco_dict=aruco_dict,
         aruco_marker_length_mm=aruco_marker_length_mm,
     )
 
     try:
         result = measure_upload(
-            video.file,
+            BytesIO(file_bytes),
             filename=filename,
             clockwise=clockwise,
             scale_options=scale_options,
@@ -284,26 +397,98 @@ async def measure(
             status_code=500, detail=f"Unexpected server error: {exc}"
         ) from exc
 
-    return MeasureResponse(
-        measurements_mm=MeasurementsMm(
-            circumference=result.circumference,
-            front_to_nape=result.front_to_nape,
-            ear_to_ear=result.ear_to_ear,
-            head_width=result.head_width,
-            length=result.length,
-        ),
-        meta=MeasureMeta(
-            clockwise=clockwise,
-            filename=filename,
-            demo_mode=result.demo_mode,
-            note=result.note,
-            scale_mode=result.scale_mode or scale_options.scale_mode,
-            scale_note=result.scale_note,
-            mm_per_pixel=result.mm_per_pixel,
-            confidence=result.confidence,
-            warnings=list(result.warnings or []),
-            scale_frames_used=result.scale_frames_used,
-        ),
+    return _build_measure_response(
+        result,
+        clockwise=clockwise,
+        filename=filename,
+        scale_mode_fallback=scale_options.scale_mode,
+    )
+
+
+@app.post(
+    "/v1/measure/jobs",
+    response_model=JobCreateResponse,
+    summary="Enqueue an async measurement job",
+    description=(
+        "Same multipart form fields as POST /v1/measure, but returns immediately "
+        "with {job_id, status: queued}. Poll GET /v1/measure/jobs/{job_id} for "
+        "queued|running|succeeded|failed.\n\n"
+        "**MVP limitation:** jobs are stored in-process memory and are NOT safe "
+        "across multiple uvicorn workers or processes. Use a single worker for "
+        "this MVP, or replace the store for production."
+    ),
+    responses={
+        413: {"description": "Upload too large"},
+    },
+)
+async def measure_job_create(
+    request: Request,
+    video: UploadFile = File(..., description="Video file (e.g. MP4) of the head rotation"),
+    clockwise: bool = Form(False),
+    scale_mode: str = Form("magstripe"),
+    mm_per_pixel: Optional[float] = Form(None),
+    reference_width_mm: Optional[float] = Form(None),
+    reference_width_px: Optional[float] = Form(None),
+    ipd_mm: Optional[float] = Form(63.0),
+    iris_mm: Optional[float] = Form(11.7),
+    aruco_dict: Optional[str] = Form("4x4_50"),
+    aruco_marker_length_mm: Optional[float] = Form(None),
+) -> JobCreateResponse:
+    file_bytes, filename = await _read_upload_capped(video, request)
+
+    scale_options = _parse_scale_options(
+        scale_mode=scale_mode,
+        mm_per_pixel=mm_per_pixel,
+        reference_width_mm=reference_width_mm,
+        reference_width_px=reference_width_px,
+        ipd_mm=ipd_mm,
+        iris_mm=iris_mm,
+        aruco_dict=aruco_dict,
+        aruco_marker_length_mm=aruco_marker_length_mm,
+    )
+
+    record = submit_measure_job(
+        file_bytes=file_bytes,
+        filename=filename,
+        clockwise=clockwise,
+        scale_options=scale_options,
+        max_bytes=MAX_UPLOAD_BYTES,
+    )
+    return JobCreateResponse(job_id=record.job_id, status="queued")
+
+
+@app.get(
+    "/v1/measure/jobs/{job_id}",
+    response_model=JobStatusResponse,
+    summary="Get async measurement job status / result",
+    description=(
+        "Poll until status is succeeded (result present) or failed (error present). "
+        "In-memory store — not multi-worker safe (MVP)."
+    ),
+    responses={404: {"description": "Unknown job_id"}},
+)
+def measure_job_status(job_id: str) -> JobStatusResponse:
+    record = get_job(job_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"Unknown job_id: {job_id}")
+
+    result_payload = None
+    if record.status == "succeeded" and record.result is not None:
+        result_payload = _build_measure_response(
+            record.result,
+            clockwise=record.clockwise,
+            filename=record.filename,
+            scale_mode_fallback=record.scale_mode or "magstripe",
+        )
+
+    return JobStatusResponse(
+        job_id=record.job_id,
+        status=record.status,
+        result=result_payload,
+        error=record.error if record.status == "failed" else None,
+        filename=record.filename,
+        created_at=record.created_at,
+        updated_at=record.updated_at,
     )
 
 

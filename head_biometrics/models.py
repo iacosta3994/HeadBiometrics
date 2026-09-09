@@ -24,12 +24,12 @@ class MeasureMeta(BaseModel):
         None,
         description=(
             "Scale resolution mode: magstripe | card | aruco | mm_per_pixel | "
-            "reference_mm | ipd (alias: id1_card → card)"
+            "reference_mm | ipd | iris (alias: id1_card → card)"
         ),
     )
     scale_note: Optional[str] = Field(
         None,
-        description="Extra info about scale (e.g. IPD prior caveat, card/aruco detect summary)",
+        description="Extra info about scale (e.g. IPD/iris prior caveat, card/aruco detect summary)",
     )
     mm_per_pixel: Optional[float] = Field(
         None,
@@ -41,7 +41,7 @@ class MeasureMeta(BaseModel):
         le=1.0,
         description=(
             "Heuristic quality score 0-1 (not calibrated, not medical-grade). "
-            "Lower when few scale detections or approximate modes (e.g. ipd)."
+            "Lower when few scale detections or approximate modes (e.g. ipd, iris)."
         ),
     )
     warnings: List[str] = Field(
@@ -81,3 +81,26 @@ class ScaleModeInfo(BaseModel):
 
 class ScaleModesResponse(BaseModel):
     modes: List[ScaleModeInfo]
+
+
+class JobCreateResponse(BaseModel):
+    job_id: str
+    status: str = Field("queued", description="Initial status is always queued")
+
+
+class JobStatusResponse(BaseModel):
+    job_id: str
+    status: str = Field(
+        ...,
+        description="queued | running | succeeded | failed",
+    )
+    result: Optional[MeasureResponse] = Field(
+        None, description="Present when status=succeeded"
+    )
+    error: Optional[str] = Field(
+        None, description="Present when status=failed"
+    )
+    filename: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
