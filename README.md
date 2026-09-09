@@ -367,8 +367,10 @@ TensorFlow. Card-scale unit tests draw synthetic ID-1 rectangles (including
 rotated quads). ArUco tests use `cv2.aruco.generateImageMarker`. Iris tests
 mock eyelid landmarks. Async job tests mock `measure_upload` and poll status.
 
-GitHub Actions (`.github/workflows/ci.yml`) runs `pip install -r requirements.txt`
-+ `pytest` on Python 3.12 (no TensorFlow).
+A lean GitHub Actions workflow lives at `ci/github-actions.yml` (Python 3.12,
+`pip install -r requirements.txt`, `pytest` — no TensorFlow). Copy it to
+`.github/workflows/ci.yml` to enable (creating workflow files needs a token
+with the `workflow` scope).
 
 ## Project layout
 
@@ -379,7 +381,7 @@ src/                 # Original CV/TF measurement modules + model weights
   card_scale.py      # ISO ID-1 card auto-detect
   scale_modes.py     # magstripe / card / aruco / mm_per_pixel / reference / ipd / iris
 tests/               # pytest (health + mocked measure/jobs + side/scale/card/aruco/iris)
-.github/workflows/   # CI (Python 3.12 + pytest, no TF)
+ci/github-actions.yml  # CI template → copy to .github/workflows/ci.yml
 Video_Tests/         # Sample video(s)
 Dockerfile           # Lean API image (models volume-mounted or DEMO_MODE)
 .dockerignore
