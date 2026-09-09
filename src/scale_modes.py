@@ -14,11 +14,21 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 DEFAULT_IPD_MM = 63.0
-SCALE_MODES = frozenset({"magstripe", "mm_per_pixel", "reference_mm", "ipd"})
+SCALE_MODES = frozenset(
+    {"magstripe", "mm_per_pixel", "reference_mm", "ipd", "card", "id1_card"}
+)
 
 
 class ScaleError(Exception):
     """Raised when scale cannot be resolved from the chosen mode/inputs."""
+
+
+def normalize_scale_mode(mode: Optional[str]) -> str:
+    """Lowercase + alias map (``id1_card`` → ``card``)."""
+    m = (mode or "magstripe").strip().lower()
+    if m == "id1_card":
+        return "card"
+    return m
 
 
 def as_pixel_mm(mm_per_pixel: float) -> list:
@@ -100,7 +110,7 @@ def from_ipd(
         f"Scale from interpupillary distance prior (ipd_mm={float(ipd_mm)}, "
         f"ipd_px={ipd_px:.1f}). Adult mean IPD ≈ 63 mm is a population prior — "
         "approximate; less accurate than a physical reference (magstripe / "
-        "known object width)."
+        "known object width / ISO ID-1 card)."
     )
     return as_pixel_mm(mm_per_pixel), note
 
@@ -111,12 +121,62 @@ def from_magstripe(img_array: Sequence) -> list:
     try:
         pixel_mm = video_to_pixel_mm(img_array)
     except (ValueError, TypeError, IndexError) as exc:
+        # IndexError/ValueError are common when no stripes survive filtering
+        # (e.g. min() on empty list after std_filter).
         raise ScaleError(
             "Magstripe scale detection failed. Ensure a credit-card-style "
-            f"magnetic stripe is visible, or use another scale_mode. Details: {exc}"
+            "magnetic stripe is visible, or use scale_mode=card / "
+            "mm_per_pixel / reference_mm / ipd. "
+            f"Details: {exc}"
         ) from exc
     if pixel_mm is None or (hasattr(pixel_mm, "__len__") and len(pixel_mm) == 0):
         raise ScaleError(
-            "Magstripe scale detection returned no usable pixel/mm estimate."
+            "Magstripe scale detection returned no usable pixel/mm estimate. "
+            "Try scale_mode=card (full ISO ID-1 card) or supply mm_per_pixel."
         )
+    try:
+        # Legacy returns nested list; guard empty / malformed results.
+        first = pixel_mm[0]
+        while isinstance(first, (list, tuple)):
+            first = first[0]
+        if float(first) <= 0:
+            raise ScaleError("Magstripe mm_per_pixel was non-positive.")
+    except (IndexError, TypeError, ValueError) as exc:
+        raise ScaleError(
+            "Magstripe scale detection returned a malformed pixel/mm estimate. "
+            f"Details: {exc}"
+        ) from exc
     return pixel_mm
+
+
+def from_card(img_array: Sequence) -> Tuple[list, str]:
+    """Detect an ISO ID-1 card (85.60×53.98 mm) and derive mm/pixel.
+
+    Uses the **longest side** of the detected card:
+    ``mm_per_pixel = 85.60 / max(width_px, height_px)``, then median-aggregates
+    across frames.
+    """
+    from src.card_scale import ID1_LONG_MM, ID1_SHORT_MM, card_mm_per_pixel_from_frames
+
+    try:
+        mm_per_pixel, n = card_mm_per_pixel_from_frames(img_array)
+    except LookupError as exc:
+        raise ScaleError(
+            "ISO ID-1 card scale detection failed. Show a full credit/ID card "
+            "flat and fully visible in frame (85.60×53.98 mm), or use "
+            "mm_per_pixel / reference_mm / ipd / magstripe instead. "
+            f"Details: {exc}"
+        ) from exc
+    except (ValueError, TypeError, IndexError) as exc:
+        raise ScaleError(
+            "ISO ID-1 card scale detection failed. Show a full credit/ID card "
+            "flat and fully visible in frame, or use another scale_mode. "
+            f"Details: {exc}"
+        ) from exc
+
+    note = (
+        f"Scale from ISO ID-1 card auto-detect "
+        f"({ID1_LONG_MM}×{ID1_SHORT_MM} mm; longest-side mm/px; "
+        f"median over {n} frame detection(s))."
+    )
+    return as_pixel_mm(mm_per_pixel), note

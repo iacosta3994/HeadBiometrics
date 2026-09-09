@@ -9,7 +9,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from head_biometrics.app import app
-from head_biometrics.pipeline import DetectionError, MeasurementResult, ScaleOptions, validate_scale_options
+from head_biometrics.pipeline import (
+    DetectionError,
+    MeasurementResult,
+    ScaleOptions,
+    UploadTooLargeError,
+    validate_scale_options,
+)
 
 
 @pytest.fixture
@@ -24,6 +30,19 @@ def test_health_ok(client):
     assert body["status"] == "ok"
     assert "pipeline_available" in body
     assert "demo_mode" in body
+
+
+def test_scale_modes_catalog(client):
+    resp = client.get("/v1/scale-modes")
+    assert resp.status_code == 200
+    body = resp.json()
+    ids = {m["id"] for m in body["modes"]}
+    assert {"magstripe", "card", "mm_per_pixel", "reference_mm", "ipd"} <= ids
+    card = next(m for m in body["modes"] if m["id"] == "card")
+    assert "id1_card" in card["aliases"]
+    assert card["required_fields"] == []
+    mm = next(m for m in body["modes"] if m["id"] == "mm_per_pixel")
+    assert "mm_per_pixel" in mm["required_fields"]
 
 
 def test_measure_missing_file(client):
@@ -43,6 +62,7 @@ def test_measure_with_mocked_pipeline(client):
         note=None,
         scale_mode="magstripe",
         scale_note=None,
+        mm_per_pixel=0.21,
     )
     fake_video = ("clip.mp4", BytesIO(b"fake-video-bytes"), "video/mp4")
 
@@ -64,8 +84,8 @@ def test_measure_with_mocked_pipeline(client):
     assert body["meta"]["filename"] == "clip.mp4"
     assert body["meta"]["demo_mode"] is False
     assert body["meta"]["scale_mode"] == "magstripe"
+    assert body["meta"]["mm_per_pixel"] == pytest.approx(0.21)
     mocked.assert_called_once()
-    # Scale options should be forwarded
     call_kwargs = mocked.call_args.kwargs
     assert "scale_options" in call_kwargs
     assert call_kwargs["scale_options"].scale_mode == "magstripe"
@@ -91,7 +111,6 @@ def test_measure_detection_failure_returns_422(client):
 def test_measure_empty_filename_400(client):
     fake_video = ("", BytesIO(b"x"), "video/mp4")
     resp = client.post("/v1/measure", files={"video": fake_video})
-    # Starlette/FastAPI may treat empty filename as missing → 422, or our check → 400
     assert resp.status_code in (400, 422)
 
 
@@ -105,6 +124,7 @@ def test_measure_forwards_mm_per_pixel_scale(client):
         demo_mode=False,
         scale_mode="mm_per_pixel",
         scale_note=None,
+        mm_per_pixel=0.25,
     )
     fake_video = ("clip.mp4", BytesIO(b"fake-video-bytes"), "video/mp4")
 
@@ -120,9 +140,40 @@ def test_measure_forwards_mm_per_pixel_scale(client):
 
     assert resp.status_code == 200
     assert resp.json()["meta"]["scale_mode"] == "mm_per_pixel"
+    assert resp.json()["meta"]["mm_per_pixel"] == pytest.approx(0.25)
     opts = mocked.call_args.kwargs["scale_options"]
     assert opts.scale_mode == "mm_per_pixel"
     assert opts.mm_per_pixel == pytest.approx(0.25)
+
+
+def test_measure_forwards_card_scale(client):
+    mock_result = MeasurementResult(
+        circumference=560,
+        front_to_nape=340,
+        ear_to_ear=150,
+        head_width=155,
+        length=195,
+        demo_mode=False,
+        scale_mode="card",
+        scale_note="Scale from ISO ID-1 card auto-detect",
+        mm_per_pixel=0.214,
+    )
+    fake_video = ("clip.mp4", BytesIO(b"fake-video-bytes"), "video/mp4")
+
+    with patch("head_biometrics.app.measure_upload", return_value=mock_result) as mocked:
+        resp = client.post(
+            "/v1/measure",
+            files={"video": fake_video},
+            data={"scale_mode": "card"},
+        )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["meta"]["scale_mode"] == "card"
+    assert "ISO ID-1" in body["meta"]["scale_note"]
+    assert body["meta"]["mm_per_pixel"] == pytest.approx(0.214)
+    opts = mocked.call_args.kwargs["scale_options"]
+    assert opts.scale_mode == "card"
 
 
 def test_measure_forwards_ipd_scale(client):
@@ -153,6 +204,23 @@ def test_measure_forwards_ipd_scale(client):
     assert opts.ipd_mm == pytest.approx(64.0)
 
 
+def test_measure_upload_too_large_413(client):
+    fake_video = ("clip.mp4", BytesIO(b"fake-video-bytes"), "video/mp4")
+
+    with patch(
+        "head_biometrics.app.measure_upload",
+        side_effect=UploadTooLargeError("Upload exceeds maximum size of 104857600 bytes (100 MB)."),
+    ):
+        resp = client.post(
+            "/v1/measure",
+            files={"video": fake_video},
+            data={"scale_mode": "mm_per_pixel", "mm_per_pixel": "0.2"},
+        )
+
+    assert resp.status_code == 413
+    assert "100" in resp.json()["detail"]
+
+
 def test_validate_scale_options_mm_per_pixel_missing():
     with pytest.raises(DetectionError, match="mm_per_pixel"):
         validate_scale_options(ScaleOptions(scale_mode="mm_per_pixel"))
@@ -172,6 +240,8 @@ def test_validate_scale_options_invalid_mode():
 
 def test_validate_scale_options_ok_modes():
     validate_scale_options(ScaleOptions(scale_mode="magstripe"))
+    validate_scale_options(ScaleOptions(scale_mode="card"))
+    validate_scale_options(ScaleOptions(scale_mode="id1_card"))
     validate_scale_options(ScaleOptions(scale_mode="mm_per_pixel", mm_per_pixel=0.2))
     validate_scale_options(
         ScaleOptions(

@@ -27,7 +27,11 @@ DEMO_MODE = os.environ.get("DEMO_MODE", "").strip().lower() in {"1", "true", "ye
 
 CIRCUMFERENCE_FACTOR = 0.834626841674
 
-VALID_SCALE_MODES = frozenset({"magstripe", "mm_per_pixel", "reference_mm", "ipd"})
+# Canonical modes after alias normalization (id1_card → card).
+VALID_SCALE_MODES = frozenset({"magstripe", "mm_per_pixel", "reference_mm", "ipd", "card"})
+
+# Default upload limit (bytes). Overridable via env for ops.
+MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(100 * 1024 * 1024)))
 
 
 class PipelineError(Exception):
@@ -42,6 +46,10 @@ class DependencyError(PipelineError):
     """Raised when required CV/TF dependencies are unavailable."""
 
 
+class UploadTooLargeError(PipelineError):
+    """Raised when an upload exceeds MAX_UPLOAD_BYTES."""
+
+
 @dataclass(frozen=True)
 class MeasurementResult:
     circumference: int
@@ -53,6 +61,7 @@ class MeasurementResult:
     note: Optional[str] = None
     scale_mode: Optional[str] = None
     scale_note: Optional[str] = None
+    mm_per_pixel: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -107,16 +116,37 @@ def _demo_result(reason: str, scale_mode: str = "magstripe") -> MeasurementResul
         ),
         scale_mode=scale_mode,
         scale_note=None,
+        mm_per_pixel=None,
     )
+
+
+def _extract_mm_per_pixel(pixel_mm) -> Optional[float]:
+    """Pull a scalar mm/pixel from the legacy nested ``pixel_mm`` contract."""
+    try:
+        first = pixel_mm[0]
+        while isinstance(first, (list, tuple)):
+            first = first[0]
+        val = float(first)
+        return val if val > 0 else None
+    except (IndexError, TypeError, ValueError):
+        return None
 
 
 def validate_scale_options(opts: ScaleOptions) -> None:
     """Raise DetectionError if form fields are inconsistent with scale_mode."""
-    mode = (opts.scale_mode or "magstripe").strip().lower()
+    try:
+        from src.scale_modes import normalize_scale_mode
+        mode = normalize_scale_mode(opts.scale_mode)
+    except Exception:
+        mode = (opts.scale_mode or "magstripe").strip().lower()
+        if mode == "id1_card":
+            mode = "card"
+
     if mode not in VALID_SCALE_MODES:
         raise DetectionError(
             f"Invalid scale_mode={opts.scale_mode!r}. "
-            f"Expected one of: {', '.join(sorted(VALID_SCALE_MODES))}."
+            f"Expected one of: {', '.join(sorted(VALID_SCALE_MODES))} "
+            "(alias: id1_card → card)."
         )
     if mode == "mm_per_pixel":
         if opts.mm_per_pixel is None:
@@ -129,8 +159,8 @@ def validate_scale_options(opts: ScaleOptions) -> None:
         if opts.reference_width_mm is None or opts.reference_width_px is None:
             raise DetectionError(
                 "scale_mode=reference_mm requires reference_width_mm and "
-                "reference_width_px (both > 0). ISO ID-1 auto-detection is a "
-                "follow-up; supply explicit pixel width from the client for now."
+                "reference_width_px (both > 0). For automatic ISO ID-1 detection "
+                "use scale_mode=card instead."
             )
         if float(opts.reference_width_mm) <= 0 or float(opts.reference_width_px) <= 0:
             raise DetectionError(
@@ -139,11 +169,12 @@ def validate_scale_options(opts: ScaleOptions) -> None:
     elif mode == "ipd":
         if opts.ipd_mm is None or float(opts.ipd_mm) <= 0:
             raise DetectionError("ipd_mm must be a positive float (default 63).")
+    # card / magstripe: no extra fields required
 
 
 def resolve_pixel_mm(img_array: Sequence, opts: ScaleOptions, scale_modes_mod):
     """Return ``(pixel_mm, scale_note)`` compatible with quantify helpers."""
-    mode = (opts.scale_mode or "magstripe").strip().lower()
+    mode = scale_modes_mod.normalize_scale_mode(opts.scale_mode)
     validate_scale_options(ScaleOptions(
         scale_mode=mode,
         mm_per_pixel=opts.mm_per_pixel,
@@ -164,13 +195,14 @@ def resolve_pixel_mm(img_array: Sequence, opts: ScaleOptions, scale_modes_mod):
                 ),
                 (
                     "Scale from client-supplied reference object "
-                    f"({opts.reference_width_mm} mm / {opts.reference_width_px} px). "
-                    "Automatic ISO ID-1 card detection is not enabled yet."
+                    f"({opts.reference_width_mm} mm / {opts.reference_width_px} px)."
                 ),
             )
         if mode == "ipd":
             ipd_mm = float(opts.ipd_mm) if opts.ipd_mm is not None else 63.0
             return scale_modes_mod.from_ipd(img_array, ipd_mm=ipd_mm)
+        if mode == "card":
+            return scale_modes_mod.from_card(img_array)
     except scale_modes_mod.ScaleError as exc:
         raise DetectionError(str(exc)) from exc
 
@@ -187,7 +219,6 @@ def run_measurements(
     Mirrors ``src.main.run`` but also exposes ``head_width`` and ``length``.
     """
     opts = scale_options or ScaleOptions()
-    mode = (opts.scale_mode or "magstripe").strip().lower()
 
     try:
         (
@@ -198,10 +229,15 @@ def run_measurements(
             scale_modes,
         ) = _try_import_pipeline()
     except DependencyError as exc:
+        mode_early = (opts.scale_mode or "magstripe").strip().lower()
+        if mode_early == "id1_card":
+            mode_early = "card"
         if DEMO_MODE:
             logger.warning("DEMO_MODE active: %s", exc)
-            return _demo_result(str(exc), scale_mode=mode)
+            return _demo_result(str(exc), scale_mode=mode_early)
         raise
+
+    mode = scale_modes.normalize_scale_mode(opts.scale_mode)
 
     path = str(video_path)
     try:
@@ -222,6 +258,7 @@ def run_measurements(
             raise DetectionError("No frames could be extracted from the video.")
 
         pixel_mm, scale_note = resolve_pixel_mm(img_array, opts, scale_modes)
+        used_mm_per_pixel = _extract_mm_per_pixel(pixel_mm)
 
         try:
             narrow_img, wide_img = narrow_wide_img(img_array)
@@ -261,6 +298,7 @@ def run_measurements(
             note=None,
             scale_mode=mode,
             scale_note=scale_note,
+            mm_per_pixel=used_mm_per_pixel,
         )
     except DetectionError:
         raise
@@ -275,15 +313,28 @@ def measure_upload(
     filename: Optional[str],
     clockwise: bool = False,
     scale_options: Optional[ScaleOptions] = None,
+    max_bytes: Optional[int] = None,
 ) -> MeasurementResult:
     """Persist an uploaded video to a temp file and run measurements."""
+    limit = MAX_UPLOAD_BYTES if max_bytes is None else int(max_bytes)
     suffix = Path(filename or "upload.mp4").suffix or ".mp4"
+    total = 0
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp_path = Path(tmp.name)
         while True:
             chunk = file_obj.read(1024 * 1024)
             if not chunk:
                 break
+            total += len(chunk)
+            if total > limit:
+                try:
+                    tmp_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                raise UploadTooLargeError(
+                    f"Upload exceeds maximum size of {limit} bytes "
+                    f"({limit // (1024 * 1024)} MB)."
+                )
             tmp.write(chunk)
 
     try:
