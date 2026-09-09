@@ -11,9 +11,9 @@ import logging
 import os
 import sys
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import BinaryIO, Optional, Sequence, Union
+from typing import BinaryIO, List, Optional, Sequence, Union
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +28,18 @@ DEMO_MODE = os.environ.get("DEMO_MODE", "").strip().lower() in {"1", "true", "ye
 CIRCUMFERENCE_FACTOR = 0.834626841674
 
 # Canonical modes after alias normalization (id1_card → card).
-VALID_SCALE_MODES = frozenset({"magstripe", "mm_per_pixel", "reference_mm", "ipd", "card"})
+VALID_SCALE_MODES = frozenset(
+    {"magstripe", "mm_per_pixel", "reference_mm", "ipd", "card", "aruco"}
+)
 
 # Default upload limit (bytes). Overridable via env for ops.
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(100 * 1024 * 1024)))
+
+# Package version (also exposed via /health and /version)
+try:
+    from head_biometrics import __version__ as PACKAGE_VERSION
+except Exception:  # noqa: BLE001
+    PACKAGE_VERSION = "0.0.0"
 
 
 class PipelineError(Exception):
@@ -62,6 +70,10 @@ class MeasurementResult:
     scale_mode: Optional[str] = None
     scale_note: Optional[str] = None
     mm_per_pixel: Optional[float] = None
+    # Quality / confidence (heuristic — not calibrated, not medical-grade)
+    confidence: Optional[float] = None
+    warnings: List[str] = field(default_factory=list)
+    scale_frames_used: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -71,6 +83,8 @@ class ScaleOptions:
     reference_width_mm: Optional[float] = None
     reference_width_px: Optional[float] = None
     ipd_mm: float = 63.0
+    aruco_dict: Optional[str] = "4x4_50"
+    aruco_marker_length_mm: Optional[float] = None
 
 
 def _try_import_pipeline():
@@ -102,7 +116,86 @@ def pipeline_available() -> bool:
         return False
 
 
+def compute_quality_meta(
+    *,
+    scale_mode: str,
+    scale_frames_used: Optional[int] = None,
+    demo_mode: bool = False,
+    had_narrow_wide: bool = True,
+) -> tuple:
+    """Return ``(confidence 0–1, warnings[])`` — heuristic only, not calibrated.
+
+    Documented intent: inform clients; never block a successful measurement.
+    """
+    warnings: List[str] = []
+    conf = 0.85
+
+    if demo_mode:
+        return 0.0, [
+            "DEMO_MODE mock measurements — confidence is zero; not from video."
+        ]
+
+    mode = (scale_mode or "magstripe").strip().lower()
+    if mode == "id1_card":
+        mode = "card"
+
+    if mode == "ipd":
+        conf = min(conf, 0.40)
+        warnings.append(
+            "IPD scale uses a population prior (≈63 mm adult mean) — approximate only; "
+            "prefer magstripe, card, aruco, or a measured reference when accuracy matters."
+        )
+    elif mode == "mm_per_pixel":
+        conf = min(conf, 0.90)
+        warnings.append(
+            "Scale is client-supplied mm_per_pixel; accuracy depends on that value."
+        )
+    elif mode == "reference_mm":
+        conf = min(conf, 0.80)
+        warnings.append(
+            "Reference scale depends on client-supplied reference_width_px."
+        )
+    elif mode in {"magstripe", "card", "aruco"}:
+        n = int(scale_frames_used) if scale_frames_used is not None else None
+        if n is None:
+            # Magstripe path does not always expose a count
+            conf = min(conf, 0.70)
+            if mode == "magstripe":
+                warnings.append(
+                    "Magstripe scale resolved; per-frame detection count not available."
+                )
+        elif n <= 0:
+            conf = min(conf, 0.25)
+            warnings.append("No scale detections recorded (unexpected).")
+        elif n == 1:
+            conf = min(conf, 0.55)
+            warnings.append("Scale derived from only 1 frame detection — low support.")
+        elif n < 5:
+            conf = min(conf, 0.72)
+            warnings.append(
+                f"Scale derived from only {n} frame detections — moderate support."
+            )
+        else:
+            conf = min(conf, 0.92)
+
+    if not had_narrow_wide:
+        conf = min(conf, 0.35)
+        warnings.append(
+            "Narrow/wide head-pose extremes were missing or weak; measurements may be off."
+        )
+
+    warnings.append(
+        "confidence is a heuristic (not calibrated) — not medical-grade."
+    )
+    # Clamp
+    conf = max(0.0, min(1.0, float(conf)))
+    return conf, warnings
+
+
 def _demo_result(reason: str, scale_mode: str = "magstripe") -> MeasurementResult:
+    conf, warns = compute_quality_meta(
+        scale_mode=scale_mode, demo_mode=True, had_narrow_wide=True
+    )
     return MeasurementResult(
         circumference=560,
         front_to_nape=340,
@@ -117,6 +210,9 @@ def _demo_result(reason: str, scale_mode: str = "magstripe") -> MeasurementResul
         scale_mode=scale_mode,
         scale_note=None,
         mm_per_pixel=None,
+        confidence=conf,
+        warnings=warns,
+        scale_frames_used=None,
     )
 
 
@@ -136,6 +232,7 @@ def validate_scale_options(opts: ScaleOptions) -> None:
     """Raise DetectionError if form fields are inconsistent with scale_mode."""
     try:
         from src.scale_modes import normalize_scale_mode
+
         mode = normalize_scale_mode(opts.scale_mode)
     except Exception:
         mode = (opts.scale_mode or "magstripe").strip().lower()
@@ -169,25 +266,37 @@ def validate_scale_options(opts: ScaleOptions) -> None:
     elif mode == "ipd":
         if opts.ipd_mm is None or float(opts.ipd_mm) <= 0:
             raise DetectionError("ipd_mm must be a positive float (default 63).")
+    elif mode == "aruco":
+        if opts.aruco_marker_length_mm is None:
+            raise DetectionError(
+                "scale_mode=aruco requires aruco_marker_length_mm (float > 0) — "
+                "physical side length of the printed marker in millimeters."
+            )
+        if float(opts.aruco_marker_length_mm) <= 0:
+            raise DetectionError("aruco_marker_length_mm must be a positive float.")
     # card / magstripe: no extra fields required
 
 
 def resolve_pixel_mm(img_array: Sequence, opts: ScaleOptions, scale_modes_mod):
-    """Return ``(pixel_mm, scale_note)`` compatible with quantify helpers."""
+    """Return ``(pixel_mm, scale_note, scale_frames_used)``."""
     mode = scale_modes_mod.normalize_scale_mode(opts.scale_mode)
-    validate_scale_options(ScaleOptions(
-        scale_mode=mode,
-        mm_per_pixel=opts.mm_per_pixel,
-        reference_width_mm=opts.reference_width_mm,
-        reference_width_px=opts.reference_width_px,
-        ipd_mm=opts.ipd_mm if opts.ipd_mm is not None else 63.0,
-    ))
+    validate_scale_options(
+        ScaleOptions(
+            scale_mode=mode,
+            mm_per_pixel=opts.mm_per_pixel,
+            reference_width_mm=opts.reference_width_mm,
+            reference_width_px=opts.reference_width_px,
+            ipd_mm=opts.ipd_mm if opts.ipd_mm is not None else 63.0,
+            aruco_dict=opts.aruco_dict,
+            aruco_marker_length_mm=opts.aruco_marker_length_mm,
+        )
+    )
 
     try:
         if mode == "magstripe":
-            return scale_modes_mod.from_magstripe(img_array), None
+            return scale_modes_mod.from_magstripe(img_array), None, None
         if mode == "mm_per_pixel":
-            return scale_modes_mod.from_mm_per_pixel(opts.mm_per_pixel), None
+            return scale_modes_mod.from_mm_per_pixel(opts.mm_per_pixel), None, None
         if mode == "reference_mm":
             return (
                 scale_modes_mod.from_reference(
@@ -197,12 +306,22 @@ def resolve_pixel_mm(img_array: Sequence, opts: ScaleOptions, scale_modes_mod):
                     "Scale from client-supplied reference object "
                     f"({opts.reference_width_mm} mm / {opts.reference_width_px} px)."
                 ),
+                None,
             )
         if mode == "ipd":
             ipd_mm = float(opts.ipd_mm) if opts.ipd_mm is not None else 63.0
-            return scale_modes_mod.from_ipd(img_array, ipd_mm=ipd_mm)
+            pixel_mm, note = scale_modes_mod.from_ipd(img_array, ipd_mm=ipd_mm)
+            return pixel_mm, note, None
         if mode == "card":
-            return scale_modes_mod.from_card(img_array)
+            pixel_mm, note, n = scale_modes_mod.from_card(img_array)
+            return pixel_mm, note, n
+        if mode == "aruco":
+            pixel_mm, note, n = scale_modes_mod.from_aruco(
+                img_array,
+                marker_length_mm=float(opts.aruco_marker_length_mm),
+                aruco_dict=opts.aruco_dict,
+            )
+            return pixel_mm, note, n
     except scale_modes_mod.ScaleError as exc:
         raise DetectionError(str(exc)) from exc
 
@@ -243,13 +362,17 @@ def run_measurements(
     try:
         # Validate scale form fields early (before heavy CV) so bad requests 422.
         try:
-            validate_scale_options(ScaleOptions(
-                scale_mode=mode,
-                mm_per_pixel=opts.mm_per_pixel,
-                reference_width_mm=opts.reference_width_mm,
-                reference_width_px=opts.reference_width_px,
-                ipd_mm=opts.ipd_mm if opts.ipd_mm is not None else 63.0,
-            ))
+            validate_scale_options(
+                ScaleOptions(
+                    scale_mode=mode,
+                    mm_per_pixel=opts.mm_per_pixel,
+                    reference_width_mm=opts.reference_width_mm,
+                    reference_width_px=opts.reference_width_px,
+                    ipd_mm=opts.ipd_mm if opts.ipd_mm is not None else 63.0,
+                    aruco_dict=opts.aruco_dict,
+                    aruco_marker_length_mm=opts.aruco_marker_length_mm,
+                )
+            )
         except DetectionError:
             raise
 
@@ -257,9 +380,12 @@ def run_measurements(
         if img_array is None or len(img_array) == 0:
             raise DetectionError("No frames could be extracted from the video.")
 
-        pixel_mm, scale_note = resolve_pixel_mm(img_array, opts, scale_modes)
+        pixel_mm, scale_note, scale_frames_used = resolve_pixel_mm(
+            img_array, opts, scale_modes
+        )
         used_mm_per_pixel = _extract_mm_per_pixel(pixel_mm)
 
+        had_narrow_wide = True
         try:
             narrow_img, wide_img = narrow_wide_img(img_array)
         except Exception as exc:  # noqa: BLE001
@@ -288,6 +414,13 @@ def run_measurements(
             ((head_width_mm * 2) + (length_mm * 2)) * CIRCUMFERENCE_FACTOR
         )
 
+        conf, warns = compute_quality_meta(
+            scale_mode=mode,
+            scale_frames_used=scale_frames_used,
+            demo_mode=False,
+            had_narrow_wide=had_narrow_wide,
+        )
+
         return MeasurementResult(
             circumference=int(circumference_mm),
             front_to_nape=int(front2nape_mm),
@@ -299,6 +432,9 @@ def run_measurements(
             scale_mode=mode,
             scale_note=scale_note,
             mm_per_pixel=used_mm_per_pixel,
+            confidence=conf,
+            warnings=warns,
+            scale_frames_used=scale_frames_used,
         )
     except DetectionError:
         raise

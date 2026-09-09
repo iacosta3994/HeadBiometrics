@@ -4,9 +4,13 @@ uvicorn[standard]>=0.27,<1
 python-multipart>=0.0.9
 pydantic>=2,<3
 
-# Core CV stack used by the legacy pipeline
+# Core CV stack used by the legacy pipeline + ArUco (scale_mode=aruco).
+# Prefer opencv-contrib-python-headless so cv2.aruco is always available.
+# Do NOT also install opencv-python / opencv-python-headless alongside
+# (they conflict). Recent opencv-python-headless 4.x may already ship aruco;
+# if import cv2.aruco fails, switch to this package.
 numpy>=1.24,<3
-opencv-python-headless>=4.8,<5
+opencv-contrib-python-headless>=4.8,<5
 
 # TensorFlow is required for facial landmark detection
 # (src/Proctoring_AI/face_landmarks.py). The original project targeted TF 1.x/2.x

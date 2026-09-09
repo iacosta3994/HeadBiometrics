@@ -7,7 +7,8 @@ mm-per-pixel. All helpers here return the same shape: ``[mm_per_pixel]``.
 from __future__ import annotations
 
 import logging
-from typing import Optional, Sequence, Tuple
+from dataclasses import dataclass, field
+from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -15,12 +16,30 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_IPD_MM = 63.0
 SCALE_MODES = frozenset(
-    {"magstripe", "mm_per_pixel", "reference_mm", "ipd", "card", "id1_card"}
+    {
+        "magstripe",
+        "mm_per_pixel",
+        "reference_mm",
+        "ipd",
+        "card",
+        "id1_card",
+        "aruco",
+    }
 )
 
 
 class ScaleError(Exception):
     """Raised when scale cannot be resolved from the chosen mode/inputs."""
+
+
+@dataclass
+class ScaleResolution:
+    """Resolved scale plus optional quality hints for the API meta layer."""
+
+    pixel_mm: list
+    scale_note: Optional[str] = None
+    scale_frames_used: Optional[int] = None
+    warnings: List[str] = field(default_factory=list)
 
 
 def normalize_scale_mode(mode: Optional[str]) -> str:
@@ -110,7 +129,7 @@ def from_ipd(
         f"Scale from interpupillary distance prior (ipd_mm={float(ipd_mm)}, "
         f"ipd_px={ipd_px:.1f}). Adult mean IPD ≈ 63 mm is a population prior — "
         "approximate; less accurate than a physical reference (magstripe / "
-        "known object width / ISO ID-1 card)."
+        "known object width / ISO ID-1 card / ArUco marker)."
     )
     return as_pixel_mm(mm_per_pixel), note
 
@@ -125,14 +144,14 @@ def from_magstripe(img_array: Sequence) -> list:
         # (e.g. min() on empty list after std_filter).
         raise ScaleError(
             "Magstripe scale detection failed. Ensure a credit-card-style "
-            "magnetic stripe is visible, or use scale_mode=card / "
+            "magnetic stripe is visible, or use scale_mode=card / aruco / "
             "mm_per_pixel / reference_mm / ipd. "
             f"Details: {exc}"
         ) from exc
     if pixel_mm is None or (hasattr(pixel_mm, "__len__") and len(pixel_mm) == 0):
         raise ScaleError(
             "Magstripe scale detection returned no usable pixel/mm estimate. "
-            "Try scale_mode=card (full ISO ID-1 card) or supply mm_per_pixel."
+            "Try scale_mode=card (full ISO ID-1 card), aruco, or supply mm_per_pixel."
         )
     try:
         # Legacy returns nested list; guard empty / malformed results.
@@ -149,12 +168,17 @@ def from_magstripe(img_array: Sequence) -> list:
     return pixel_mm
 
 
-def from_card(img_array: Sequence) -> Tuple[list, str]:
+def from_card(img_array: Sequence) -> Tuple[list, str, int]:
     """Detect an ISO ID-1 card (85.60×53.98 mm) and derive mm/pixel.
 
-    Uses the **longest side** of the detected card:
-    ``mm_per_pixel = 85.60 / max(width_px, height_px)``, then median-aggregates
-    across frames.
+    Uses the **longest side** of the detected card (ordered corner distances
+    when available)::
+
+        mm_per_pixel = 85.60 / max(side_lengths_px)
+
+    then median-aggregates across frames.
+
+    Returns ``(pixel_mm, scale_note, n_detections)``.
     """
     from src.card_scale import ID1_LONG_MM, ID1_SHORT_MM, card_mm_per_pixel_from_frames
 
@@ -164,7 +188,7 @@ def from_card(img_array: Sequence) -> Tuple[list, str]:
         raise ScaleError(
             "ISO ID-1 card scale detection failed. Show a full credit/ID card "
             "flat and fully visible in frame (85.60×53.98 mm), or use "
-            "mm_per_pixel / reference_mm / ipd / magstripe instead. "
+            "aruco / mm_per_pixel / reference_mm / ipd / magstripe instead. "
             f"Details: {exc}"
         ) from exc
     except (ValueError, TypeError, IndexError) as exc:
@@ -179,4 +203,60 @@ def from_card(img_array: Sequence) -> Tuple[list, str]:
         f"({ID1_LONG_MM}×{ID1_SHORT_MM} mm; longest-side mm/px; "
         f"median over {n} frame detection(s))."
     )
-    return as_pixel_mm(mm_per_pixel), note
+    return as_pixel_mm(mm_per_pixel), note, n
+
+
+def from_aruco(
+    img_array: Sequence,
+    marker_length_mm: float,
+    aruco_dict: Optional[str] = None,
+) -> Tuple[list, str, int]:
+    """Detect ArUco markers and derive mm/pixel from printed side length.
+
+    Returns ``(pixel_mm, scale_note, n_detections)``.
+    """
+    try:
+        from src.aruco_scale import (
+            ArucoUnavailableError,
+            aruco_mm_per_pixel_from_frames,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise ScaleError(
+            f"ArUco scale module failed to import: {exc}. "
+            "Install opencv-contrib-python-headless."
+        ) from exc
+
+    if marker_length_mm is None or float(marker_length_mm) <= 0:
+        raise ScaleError(
+            "scale_mode=aruco requires aruco_marker_length_mm (float > 0) — "
+            "the physical side length of the printed marker in millimeters."
+        )
+
+    try:
+        mm_per_pixel, n, dict_name = aruco_mm_per_pixel_from_frames(
+            img_array,
+            marker_length_mm=float(marker_length_mm),
+            aruco_dict=aruco_dict,
+        )
+    except ArucoUnavailableError as exc:
+        raise ScaleError(str(exc)) from exc
+    except ValueError as exc:
+        raise ScaleError(str(exc)) from exc
+    except LookupError as exc:
+        raise ScaleError(
+            "ArUco marker scale detection failed — no marker found in any frame. "
+            "Print a marker from DICT_4X4_50 or DICT_5X5_100, keep it fully "
+            "visible, and set aruco_marker_length_mm to the physical side length. "
+            f"Details: {exc}"
+        ) from exc
+    except (TypeError, IndexError) as exc:
+        raise ScaleError(
+            f"ArUco marker scale detection failed. Details: {exc}"
+        ) from exc
+
+    note = (
+        f"Scale from ArUco marker (dict={dict_name}, "
+        f"marker_length_mm={float(marker_length_mm)}, "
+        f"median over {n} detection(s))."
+    )
+    return as_pixel_mm(mm_per_pixel), note, n

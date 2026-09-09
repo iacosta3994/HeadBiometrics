@@ -23,17 +23,34 @@ class MeasureMeta(BaseModel):
     scale_mode: Optional[str] = Field(
         None,
         description=(
-            "Scale resolution mode: magstripe | card | mm_per_pixel | "
+            "Scale resolution mode: magstripe | card | aruco | mm_per_pixel | "
             "reference_mm | ipd (alias: id1_card → card)"
         ),
     )
     scale_note: Optional[str] = Field(
         None,
-        description="Extra info about scale (e.g. IPD prior caveat, card detect summary)",
+        description="Extra info about scale (e.g. IPD prior caveat, card/aruco detect summary)",
     )
     mm_per_pixel: Optional[float] = Field(
         None,
         description="Millimeters per pixel actually used for quantification (transparency)",
+    )
+    confidence: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Heuristic quality score 0-1 (not calibrated, not medical-grade). "
+            "Lower when few scale detections or approximate modes (e.g. ipd)."
+        ),
+    )
+    warnings: List[str] = Field(
+        default_factory=list,
+        description="Non-blocking quality / scale caveats for clients",
+    )
+    scale_frames_used: Optional[int] = Field(
+        None,
+        description="Number of frame detections contributing to auto scale (card/aruco)",
     )
 
 
@@ -46,6 +63,12 @@ class HealthResponse(BaseModel):
     status: str = "ok"
     pipeline_available: bool = False
     demo_mode: bool = False
+    version: Optional[str] = None
+
+
+class VersionResponse(BaseModel):
+    version: str
+    name: str = "HeadBiometrics API"
 
 
 class ScaleModeInfo(BaseModel):

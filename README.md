@@ -3,22 +3,26 @@
 HTTP API (FastAPI) over a ~2020 OpenCV / TensorFlow pipeline that estimates head
 dimensions (circumference, front-to-nape, ear-to-ear, width, length) from a
 cellphone video. Scale can come from a **magnetic stripe**, a full **ISO ID-1
-credit/ID card**, an explicit mm/pixel value, a known reference object, or an
-IPD population prior.
+credit/ID card**, a printed **ArUco marker**, an explicit mm/pixel value, a
+known reference object, or an IPD population prior.
 
 The original scripts live under `src/` and remain available. The new service
 package is `head_biometrics/`.
 
 ## Features
 
-- `GET /health` — liveness check (works without TensorFlow / OpenCV)
+- `GET /health` — liveness check (includes `version`; works without TensorFlow)
+- `GET /version` — package version
 - `GET /v1/scale-modes` — catalog of scale modes + required form fields
 - `POST /v1/measure` — multipart video upload → JSON millimeter measurements
 - **Headless end-to-end** — side metrics auto-select points via landmarks +
   silhouette (no OpenCV GUI / mouse picks required for the API)
-- **Scale modes** — `magstripe` (default), `card` / `id1_card`, `mm_per_pixel`,
-  `reference_mm`, `ipd`
+- **Scale modes** — `magstripe` (default), `card` / `id1_card`, `aruco`,
+  `mm_per_pixel`, `reference_mm`, `ipd`
+- **Quality meta** — heuristic `meta.confidence` (0–1) + `meta.warnings`
+  (non-blocking; not calibrated / not medical-grade)
 - Upload size guard — uploads over **100 MB** → HTTP **413**
+- Optional `CORS_ORIGINS` env (e.g. `*` or `https://app.example.com`)
 - Optional `DEMO_MODE=1` — labeled mock response when the CV stack cannot import
 - Optional `Dockerfile` for a lean API image
 - Legacy CLI path: `python -m src.main` (from repo root)
@@ -28,8 +32,13 @@ package is `head_biometrics/`.
 | Layer | Packages |
 |-------|----------|
 | API   | `fastapi`, `uvicorn[standard]`, `python-multipart`, `pydantic` |
-| CV    | `numpy`, `opencv-python-headless` |
+| CV    | `numpy`, **`opencv-contrib-python-headless`** (includes `cv2.aruco`) |
 | ML    | `tensorflow` (facial landmarks via `src/Proctoring_AI`) — **optional for /health & DEMO_MODE** |
+
+> **OpenCV / ArUco:** Prefer `opencv-contrib-python-headless` so `cv2.aruco` is
+> always present. Do not install `opencv-python` / `opencv-python-headless` at
+> the same time (they conflict). Some recent headless builds already ship
+> aruco; if `import cv2.aruco` fails, switch to the contrib package.
 
 > **TensorFlow note:** The landmark model was built against TF ~2.x circa 2020.
 > On modern Python (3.11+) try `pip install "tensorflow>=2.15,<3"`. Older
@@ -72,6 +81,17 @@ Mock measurements are returned only when the CV stack cannot be imported **and**
 `DEMO_MODE=1`. Responses set `meta.demo_mode: true` and include an explanatory
 `meta.note`. Fake numbers are never returned silently.
 
+### CORS
+
+```bash
+# allow all (dev)
+CORS_ORIGINS='*' uvicorn head_biometrics.app:app --port 8000
+
+# allow specific origins
+CORS_ORIGINS='https://app.example.com,https://staging.example.com' \
+  uvicorn head_biometrics.app:app --port 8000
+```
+
 ### Docker
 
 ```bash
@@ -90,16 +110,18 @@ docker run --rm -p 8000:8000 \
 ```
 
 Override the upload limit with `-e MAX_UPLOAD_BYTES=...` (default 104857600 = 100 MB).
+Optional: `-e CORS_ORIGINS='*'`.
 
 ## Scale modes
 
 | `scale_mode`     | Required form fields                         | Notes |
 |------------------|----------------------------------------------|-------|
 | `magstripe`      | _(none)_                                     | Default. Detects credit-card magstripe aspect ratios → mm/pixel. |
-| `card` (`id1_card`) | _(none)_                                  | Auto-detect full **ISO ID-1** card **85.60 × 53.98 mm**. Scale uses the **longest side**: `mm_per_pixel = 85.60 / max(width_px, height_px)`, median across frames. |
+| `card` (`id1_card`) | _(none)_                                  | Auto-detect full **ISO ID-1** card **85.60 × 53.98 mm**. Scale uses the **longest side** (ordered corner distances when available): `mm_per_pixel = 85.60 / longest_side_px`, median across frames. |
+| `aruco`          | `aruco_marker_length_mm`                     | Detect printed ArUco marker (`cv2.aruco`). Optional `aruco_dict` (default **`4x4_50`**; also try **`5x5_100`**). `mm_per_pixel = length_mm / side_px` (median). |
 | `mm_per_pixel`   | `mm_per_pixel` (float > 0)                   | Caller supplies millimeters per pixel; skips auto detection. |
-| `reference_mm`   | `reference_width_mm`, `reference_width_px`   | Known object width in mm and its measured width in px. Prefer `card` for automatic ID-1. |
-| `ipd`            | optional `ipd_mm` (default **63**)           | Interpupillary distance from eye landmarks vs adult mean prior. **Approximate** — see `meta.scale_note`. |
+| `reference_mm`   | `reference_width_mm`, `reference_width_px`   | Known object width in mm and its measured width in px. Prefer `card` / `aruco` for automatic detection. |
+| `ipd`            | optional `ipd_mm` (default **63**)           | Interpupillary distance from eye landmarks vs adult mean prior. **Approximate** — see `meta.scale_note` / `warnings`. |
 
 List modes programmatically:
 
@@ -109,7 +131,7 @@ curl -s http://127.0.0.1:8000/v1/scale-modes | jq
 
 All modes produce a `pixel_mm` value compatible with the legacy quantify helpers
 (`pixel_mm[0]` = mm per pixel). Successful responses include `meta.mm_per_pixel`
-(the scalar actually used).
+(the scalar actually used), plus heuristic `meta.confidence` and `meta.warnings`.
 
 ### Card mode details
 
@@ -119,19 +141,44 @@ and `head_biometrics/pipeline.py`):
 1. Grayscale → blur → Canny + adaptive thresholds
 2. `findContours` + `approxPolyDP` for convex quads
 3. Score by aspect ≈ 85.60/53.98 (±12%), area fraction, rectangularity
-4. Prefer longest side for scale; median-aggregate across frames
+4. Longest side from **ordered corner distances** (perspective-aware); second
+   relaxed pass if the primary finds nothing (wider aspect/area gates)
+5. Median-aggregate across frames
 
 On failure the API returns **422** with a clear message asking you to show a
 full credit/ID card flat in frame, or use another scale mode.
 
+### ArUco mode details
+
+Implementation: `src/aruco_scale.py`.
+
+1. Resolve dictionary (`4x4_50` → `DICT_4X4_50`, etc.)
+2. Detect markers per frame via `cv2.aruco.ArucoDetector` (legacy path supported)
+3. Side length = mean of the four corner edges in px
+4. `mm_per_pixel = aruco_marker_length_mm / side_px`; median across detections
+
+Print a marker, measure its physical side in mm, and pass that as
+`aruco_marker_length_mm`. No marker → **422**.
+
 ## Example curl
 
 ```bash
-# health
+# health (includes version)
 curl -s http://127.0.0.1:8000/health | jq
+
+# version
+curl -s http://127.0.0.1:8000/version | jq
 
 # list scale modes
 curl -s http://127.0.0.1:8000/v1/scale-modes | jq
+
+# measure with ArUco marker scale (marker side = 40 mm, DICT_4X4_50)
+curl -s -X POST http://127.0.0.1:8000/v1/measure \
+  -F "video=@Video_Tests/Self.mp4;type=video/mp4" \
+  -F "clockwise=false" \
+  -F "scale_mode=aruco" \
+  -F "aruco_marker_length_mm=40" \
+  -F "aruco_dict=4x4_50" | jq
 
 # measure with ISO ID-1 card auto-detect scale
 curl -s -X POST http://127.0.0.1:8000/v1/measure \
@@ -186,9 +233,14 @@ Example success payload:
     "filename": "Self.mp4",
     "demo_mode": false,
     "note": null,
-    "scale_mode": "card",
-    "scale_note": "Scale from ISO ID-1 card auto-detect (85.6×53.98 mm; longest-side mm/px; median over 12 frame detection(s)).",
-    "mm_per_pixel": 0.214
+    "scale_mode": "aruco",
+    "scale_note": "Scale from ArUco marker (dict=DICT_4X4_50, marker_length_mm=40.0, median over 8 detection(s)).",
+    "mm_per_pixel": 0.2,
+    "confidence": 0.92,
+    "warnings": [
+      "confidence is a heuristic (not calibrated) — not medical-grade."
+    ],
+    "scale_frames_used": 8
   }
 }
 ```
@@ -198,11 +250,12 @@ Example success payload:
 Same logic as `src/main.py` `run()`, plus scale-mode resolution:
 
 1. Split video frames (`key_frame_extraction`) — optional 90° rotate for portrait
-2. Resolve scale → mm per pixel (`magstripe` / `card` / `mm_per_pixel` / `reference_mm` / `ipd`)
+2. Resolve scale → mm per pixel (`magstripe` / `card` / `aruco` / `mm_per_pixel` / `reference_mm` / `ipd`)
 3. Pick narrow (front) / wide (side) frames via face + head-pose models
 4. Front metrics (`front_quantify`) → ear-to-ear, head width
 5. Side metrics (`side_quantify`, **headless**) → front-to-nape, length
 6. Circumference ≈ `((width*2)+(length*2)) * 0.834626841674`
+7. Attach heuristic confidence / warnings (does not block the response)
 
 ### Headless side metrics
 
@@ -223,14 +276,19 @@ three).
 ## Known limitations
 
 - **Magstripe optional, not gone.** Default `scale_mode=magstripe` still needs a
-  visible stripe; use `card` or another mode when none is present.
+  visible stripe; use `card`, `aruco`, or another mode when none is present.
 - **Card detection** needs a mostly flat, fully visible ISO ID-1 rectangle with
-  enough contrast. Heavy perspective, glare, or partial occlusion → 422.
-- **IPD scale is approximate.** Adult mean ≈ 63 mm is a population prior; responses
-  include `meta.scale_note` explaining this. Prefer magstripe, card, or a measured
-  reference when accuracy matters.
+  enough contrast. Heavy perspective, glare, or partial occlusion → 422. A
+  relaxed second pass helps mild cases but still gates on aspect + area.
+- **ArUco** needs `cv2.aruco` (contrib/headless) and a fully visible printed
+  marker whose physical side matches `aruco_marker_length_mm`.
+- **IPD scale is approximate.** Adult mean ≈ 63 mm is a population prior;
+  confidence is capped and warnings always mention this. Prefer magstripe,
+  card, aruco, or a measured reference when accuracy matters.
+- **Confidence is heuristic.** `meta.confidence` / `warnings` inform clients;
+  they are **not** calibrated and **not** medical-grade.
 - **Reference object.** `reference_mm` still requires the client to supply
-  `reference_width_px`. Use `scale_mode=card` for automatic ISO ID-1 detection.
+  `reference_width_px`. Use `scale_mode=card` or `aruco` for automatic detection.
 - **Case-sensitive imports.** Module files under `src/` were renamed to lowercase
   (`front_quantify.py`, etc.) so Linux imports match the historical
   `from src.front_quantify import ...` style.
@@ -250,17 +308,18 @@ pytest -q
 ```
 
 Tests mock the pipeline / inject synthetic landmarks so CI does not need
-TensorFlow. Card-scale unit tests draw a synthetic ID-1 rectangle with OpenCV /
-numpy (no real video required).
+TensorFlow. Card-scale unit tests draw synthetic ID-1 rectangles (including
+rotated quads). ArUco tests use `cv2.aruco.generateImageMarker`.
 
 ## Project layout
 
 ```
 head_biometrics/     # FastAPI app + pipeline adapter
 src/                 # Original CV/TF measurement modules + model weights
+  aruco_scale.py     # ArUco marker auto-detect
   card_scale.py      # ISO ID-1 card auto-detect
-  scale_modes.py     # magstripe / card / mm_per_pixel / reference / ipd
-tests/               # pytest (health + mocked /v1/measure + side/scale/card units)
+  scale_modes.py     # magstripe / card / aruco / mm_per_pixel / reference / ipd
+tests/               # pytest (health + mocked /v1/measure + side/scale/card/aruco)
 Video_Tests/         # Sample video(s)
 Dockerfile           # Lean API image (models volume-mounted or DEMO_MODE)
 .dockerignore

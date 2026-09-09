@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import cv2
 import numpy as np
 import pytest
 
@@ -31,11 +32,29 @@ def _draw_id1_card(
     x1, y1 = x0 + long_px, y0 + short_px
     assert x1 < canvas_w and y1 < canvas_h
     img[y0:y1, x0:x1] = (fill, fill, fill)
-    # Dark border helps Canny / threshold find the quad edges.
     img[y0:y1, x0 : x0 + 2] = 0
     img[y0:y1, x1 - 2 : x1] = 0
     img[y0 : y0 + 2, x0:x1] = 0
     img[y1 - 2 : y1, x0:x1] = 0
+    return img
+
+
+def _draw_rotated_id1_card(
+    canvas_h: int = 600,
+    canvas_w: int = 800,
+    long_px: int = 360,
+    angle_deg: float = 25.0,
+    fill: int = 230,
+    bg: int = 25,
+) -> np.ndarray:
+    """BGR image with an ID-1 aspect rectangle rotated (perspective-ish quad)."""
+    short_px = int(round(long_px / ID1_ASPECT))
+    img = np.full((canvas_h, canvas_w, 3), bg, dtype=np.uint8)
+    cx, cy = canvas_w // 2, canvas_h // 2
+    rect = ((float(cx), float(cy)), (float(long_px), float(short_px)), float(angle_deg))
+    box = cv2.boxPoints(rect).astype(np.int32)
+    cv2.fillConvexPoly(img, box, (fill, fill, fill))
+    cv2.polylines(img, [box], True, (0, 0, 0), 2)
     return img
 
 
@@ -51,16 +70,36 @@ def test_detect_card_synthetic_rectangle():
     hit = detect_card_in_frame(img)
     assert hit is not None, "expected to detect synthetic ID-1 rectangle"
     expected = ID1_LONG_MM / long_px
-    # Allow generous tolerance: minAreaRect / contour approx may shrink a few px.
     assert hit["mm_per_pixel"] == pytest.approx(expected, rel=0.08)
     assert hit["width_px"] == pytest.approx(long_px, rel=0.08)
     assert hit["aspect"] == pytest.approx(ID1_ASPECT, rel=0.1)
 
 
+def test_detect_rotated_card_quad():
+    long_px = 360
+    img = _draw_rotated_id1_card(long_px=long_px, angle_deg=28.0)
+    hit = detect_card_in_frame(img)
+    assert hit is not None, "expected to detect rotated ID-1 quad"
+    expected = ID1_LONG_MM / long_px
+    assert hit["mm_per_pixel"] == pytest.approx(expected, rel=0.12)
+    assert hit["aspect"] == pytest.approx(ID1_ASPECT, rel=0.15)
+
+
 def test_detect_card_rejects_wrong_aspect():
     img = np.full((400, 400, 3), 30, dtype=np.uint8)
-    # Square — not ID-1
     img[50:250, 50:250] = 220
+    hit = detect_card_in_frame(img)
+    assert hit is None
+
+
+def test_detect_card_low_contrast_failure():
+    """Invisible / same-as-background "card" must not false-positive."""
+    img = np.full((480, 640, 3), 120, dtype=np.uint8)
+    # Same intensity as background — no edges for Canny/thresholds to latch onto.
+    long_px = 320
+    short_px = int(round(long_px / ID1_ASPECT))
+    x0, y0 = 80, 100
+    img[y0 : y0 + short_px, x0 : x0 + long_px] = 120
     hit = detect_card_in_frame(img)
     assert hit is None
 
@@ -75,7 +114,8 @@ def test_from_card_across_frames():
         _draw_id1_card(long_px=360, offset=(45, 55)),
         _draw_id1_card(long_px=362, offset=(42, 52)),
     ]
-    pixel_mm, note = from_card(imgs)
+    pixel_mm, note, n = from_card(imgs)
+    assert n >= 1
     assert pixel_mm[0] == pytest.approx(ID1_LONG_MM / 360.0, rel=0.1)
     assert "ISO ID-1" in note
     assert "longest-side" in note

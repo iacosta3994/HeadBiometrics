@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from head_biometrics import __version__
 from head_biometrics.models import (
     HealthResponse,
     MeasureMeta,
@@ -15,6 +18,7 @@ from head_biometrics.models import (
     MeasurementsMm,
     ScaleModeInfo,
     ScaleModesResponse,
+    VersionResponse,
 )
 from head_biometrics.pipeline import (
     DEMO_MODE,
@@ -35,11 +39,27 @@ app = FastAPI(
     description=(
         "HTTP service wrapping the legacy OpenCV/TensorFlow head-measurement "
         "pipeline. Scale can come from a magstripe card, a full ISO ID-1 "
-        "credit/ID card (scale_mode=card), an explicit mm/pixel value, a "
-        "known reference object width, or an IPD population prior."
+        "credit/ID card (scale_mode=card), a printed ArUco marker "
+        "(scale_mode=aruco), an explicit mm/pixel value, a known reference "
+        "object width, or an IPD population prior. Confidence/warnings in "
+        "meta are heuristic only — not medical-grade."
     ),
-    version="0.3.0",
+    version=__version__,
 )
+
+# Optional CORS via env: CORS_ORIGINS="*" or "https://a.com,https://b.com"
+_cors_raw = os.environ.get("CORS_ORIGINS", "").strip()
+if _cors_raw:
+    _origins = ["*"] if _cors_raw == "*" else [o.strip() for o in _cors_raw.split(",") if o.strip()]
+    if _origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+        logger.info("CORS enabled for origins: %s", _origins)
 
 SCALE_MODE_CATALOG = [
     ScaleModeInfo(
@@ -59,8 +79,21 @@ SCALE_MODE_CATALOG = [
         optional_fields=[],
         description=(
             "Auto-detect a full ISO ID-1 credit/ID card (85.60x53.98 mm) via "
-            "quad contours; mm/pixel = 85.60 / longest_side_px (median across "
-            "frames). Show the card flat and fully visible."
+            "quad contours (ordered corner distances for longest side); "
+            "mm/pixel = 85.60 / longest_side_px (median across frames). "
+            "Show the card flat and fully visible."
+        ),
+    ),
+    ScaleModeInfo(
+        id="aruco",
+        aliases=[],
+        required_fields=["aruco_marker_length_mm"],
+        optional_fields=["aruco_dict"],
+        description=(
+            "Detect a printed ArUco marker (OpenCV cv2.aruco; default dict "
+            "4x4_50, also try 5x5_100). Require aruco_marker_length_mm = "
+            "physical side length in mm. mm/pixel = length_mm / side_px "
+            "(median across detections)."
         ),
     ),
     ScaleModeInfo(
@@ -77,7 +110,8 @@ SCALE_MODE_CATALOG = [
         optional_fields=[],
         description=(
             "Known physical object width in mm and its measured width in pixels. "
-            "For automatic ISO ID-1 detection prefer scale_mode=card."
+            "For automatic ISO ID-1 detection prefer scale_mode=card; for markers "
+            "prefer scale_mode=aruco."
         ),
     ),
     ScaleModeInfo(
@@ -87,7 +121,7 @@ SCALE_MODE_CATALOG = [
         optional_fields=["ipd_mm"],
         description=(
             "Interpupillary distance from eye landmarks vs adult mean prior "
-            "(default ipd_mm=63). Approximate — see meta.scale_note."
+            "(default ipd_mm=63). Approximate — see meta.scale_note / warnings."
         ),
     ),
 ]
@@ -100,7 +134,13 @@ def health() -> HealthResponse:
         status="ok",
         pipeline_available=available,
         demo_mode=DEMO_MODE and not available,
+        version=__version__,
     )
+
+
+@app.get("/version", response_model=VersionResponse)
+def version() -> VersionResponse:
+    return VersionResponse(version=__version__)
 
 
 @app.get(
@@ -121,10 +161,12 @@ def list_scale_modes() -> ScaleModesResponse:
         "Multipart upload of a head-rotation video. Choose scale_mode:\n\n"
         "- magstripe (default): detect magstripe to mm/pixel\n"
         "- card / id1_card: detect full ISO ID-1 card (85.60x53.98 mm)\n"
+        "- aruco: require aruco_marker_length_mm; optional aruco_dict (default 4x4_50)\n"
         "- mm_per_pixel: require form mm_per_pixel\n"
         "- reference_mm: require reference_width_mm + reference_width_px\n"
         "- ipd: optional ipd_mm (default 63)\n\n"
-        "Uploads larger than 100 MB are rejected with HTTP 413."
+        "Responses include heuristic meta.confidence and meta.warnings "
+        "(non-blocking; not medical-grade). Uploads larger than 100 MB → HTTP 413."
     ),
     responses={
         413: {"description": "Upload too large"},
@@ -142,7 +184,7 @@ async def measure(
     scale_mode: str = Form(
         "magstripe",
         description=(
-            "Scale source: magstripe | card | id1_card | mm_per_pixel | "
+            "Scale source: magstripe | card | id1_card | aruco | mm_per_pixel | "
             "reference_mm | ipd"
         ),
     ),
@@ -161,6 +203,17 @@ async def measure(
     ipd_mm: Optional[float] = Form(
         63.0,
         description="IPD prior in mm for scale_mode=ipd (default adult mean 63)",
+    ),
+    aruco_dict: Optional[str] = Form(
+        "4x4_50",
+        description="ArUco dictionary for scale_mode=aruco (default 4x4_50; also 5x5_100)",
+    ),
+    aruco_marker_length_mm: Optional[float] = Form(
+        None,
+        description=(
+            "Required for scale_mode=aruco — physical side length of the printed "
+            "marker in millimeters"
+        ),
     ),
 ) -> MeasureResponse:
     if video is None:
@@ -198,6 +251,8 @@ async def measure(
         reference_width_mm=reference_width_mm,
         reference_width_px=reference_width_px,
         ipd_mm=63.0 if ipd_mm is None else float(ipd_mm),
+        aruco_dict=(aruco_dict or "4x4_50").strip() if aruco_dict else "4x4_50",
+        aruco_marker_length_mm=aruco_marker_length_mm,
     )
 
     try:
@@ -245,6 +300,9 @@ async def measure(
             scale_mode=result.scale_mode or scale_options.scale_mode,
             scale_note=result.scale_note,
             mm_per_pixel=result.mm_per_pixel,
+            confidence=result.confidence,
+            warnings=list(result.warnings or []),
+            scale_frames_used=result.scale_frames_used,
         ),
     )
 
