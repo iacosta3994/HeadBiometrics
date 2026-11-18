@@ -1,0 +1,24 @@
+.git
+.venv
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+*.log
+.DS_Store
+.idea
+.vscode
+Video_Tests
+filename
+*.egg-info
+dist
+build
+.env
+
+# Keep the image lean — mount these at runtime for the full pipeline
+**/*.caffemodel
+**/pose_model/**
+**/saved_model.pb
